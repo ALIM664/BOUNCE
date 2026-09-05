@@ -439,6 +439,58 @@ input[type="range"] {
     }
 }
 
+/* =====================================================
+   АВТОРИЗАЦИЯ
+===================================================== */
+
+.auth-panel {
+    margin-bottom: 25px;
+    padding: 16px;
+    border-radius: 16px;
+    background: #111522;
+    border: 1px solid rgba(255,255,255,.06);
+}
+
+.auth-status {
+    text-align: center;
+    margin-bottom: 12px;
+    color: #9da7bf;
+    font-size: 14px;
+}
+
+.auth-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+
+.auth-btn {
+    border: none;
+    border-radius: 10px;
+    padding: 11px 18px;
+    background: #292f43;
+    color: white;
+    cursor: pointer;
+    transition: .15s;
+    font-weight: bold;
+}
+
+.auth-btn:hover {
+    background: #5865f2;
+    transform: translateY(-1px);
+}
+
+.logout-btn {
+    display: block;
+    width: 100%;
+    background: #3a2028;
+}
+
+.logout-btn:hover {
+    background: #d6455d;
+}
+
+
 </style>
 </head>
 
@@ -701,6 +753,33 @@ input[type="range"] {
         </button>
 
     </div>
+
+    <div class="auth-panel">
+
+        <div id="authStatus" class="auth-status">
+            Не авторизован
+        </div>
+
+        <div id="authButtons" class="auth-buttons">
+            <button class="auth-btn" id="createAccountButton">
+                Create account
+            </button>
+
+            <button class="auth-btn" id="loginButton">
+                Login
+            </button>
+        </div>
+
+        <button
+            class="auth-btn logout-btn"
+            id="logoutButton"
+            style="display:none;"
+        >
+            Logout
+        </button>
+
+    </div>
+
 
 </section>
 
@@ -2389,16 +2468,6 @@ function createLevel2() {
         },
 
         {
-            x: 1510,
-            y: 810,
-            w: 350,
-            h: 30,
-            bounce: 1,
-            color: "#ff0000",
-            finish: true
-        },
-
-        {
             x: 810,
             y: 600,
             w: 350,
@@ -2406,6 +2475,16 @@ function createLevel2() {
             bounce: 0,
             color: "#00ffff",
             spikes: true
+        },
+
+        {
+            x: 1510,
+            y: 810,
+            w: 350,
+            h: 30,
+            bounce: 1,
+            color: "#ff0000",
+            finish: true
         }
     ];
 }
@@ -2510,16 +2589,6 @@ function createLevel3() {
         },
 
         {
-            x: 1620,
-            y: 600,
-            w: 350,
-            h: 30,
-            bounce: 1,
-            color: "#ff0000",
-            finish: true
-        },
-
-        {
             x: 660,
             y: 600,
             w: 300,
@@ -2527,6 +2596,16 @@ function createLevel3() {
             bounce: 0,
             color: "#00ffff",
             spikes: true
+        },
+
+        {
+            x: 1620,
+            y: 600,
+            w: 350,
+            h: 30,
+            bounce: 1,
+            color: "#ff0000",
+            finish: true
         }
     ];
 }
@@ -2631,16 +2710,6 @@ function createLevel4() {
         },
 
         {
-            x: 1650,
-            y: 300,
-            w: 350,
-            h: 30,
-            bounce: 1,
-            color: "#ff0000",
-            finish: true
-        },
-
-        {
             x: 940,
             y: 700,
             w: 350,
@@ -2648,6 +2717,16 @@ function createLevel4() {
             bounce: 0,
             color: "#00ffff",
             spikes: true
+        },
+
+        {
+            x: 1650,
+            y: 300,
+            w: 350,
+            h: 30,
+            bounce: 1,
+            color: "#ff0000",
+            finish: true
         }
     ];
 }
@@ -2762,8 +2841,8 @@ function createLevel5() {
         },
 
         {
-            x: 940,
-            y: 600,
+            x: 1270,
+            y: 300,
             w: 300,
             h: 30,
             bounce: 0,
@@ -2772,8 +2851,8 @@ function createLevel5() {
         },
 
         {
-            x: 1270,
-            y: 300,
+            x: 940,
+            y: 600,
             w: 300,
             h: 30,
             bounce: 0,
