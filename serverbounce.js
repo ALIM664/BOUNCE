@@ -185,7 +185,6 @@ app.use(
     express.static(
         path.join(
             __dirname,
-            "public"
         )
     )
 );
@@ -1445,7 +1444,6 @@ app.get(
         res.sendFile(
             path.join(
                 __dirname,
-                "public",
                 "BOUNCE.html"
             )
         );
@@ -1479,7 +1477,6 @@ app.use(
         res.sendFile(
             path.join(
                 __dirname,
-                "public",
                 "BOUNCE.html"
             )
         );
