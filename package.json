@@ -1,0 +1,26 @@
+{
+  "name": "bounce",
+  "version": "1.0.0",
+  "description": "Bounce multiplayer game",
+  "main": "serverbounce.js",
+  "scripts": {
+    "start": "node serverbounce.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "pg": "^8.22.0",
+    "socket.io": "^4.8.3",
+    "sqlite3": "^6.0.1"
+  },
+  "allowScripts": {
+    "bcrypt@6.0.0": true,
+    "sqlite3@6.0.1": true
+  }
+}
