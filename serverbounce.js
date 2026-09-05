@@ -28,14 +28,17 @@ const io = new Server(server, {
    ПАПКИ
 ===================================================== */
 
-const DATA_DIR =
-    path.join(__dirname, "data");
+const DATA_DIR = path.join(__dirname, "data");
 
-const USERS_FILE =
-    path.join(DATA_DIR, "users.json");
+const USERS_FILE = path.join(
+    DATA_DIR,
+    "users.json"
+);
 
-const SESSIONS_FILE =
-    path.join(DATA_DIR, "sessions.json");
+const SESSIONS_FILE = path.join(
+    DATA_DIR,
+    "sessions.json"
+);
 
 
 if (!fs.existsSync(DATA_DIR)) {
@@ -45,10 +48,11 @@ if (!fs.existsSync(DATA_DIR)) {
 }
 
 
-function createFileIfNotExists(file, defaultValue) {
-
+function createFileIfNotExists(
+    file,
+    defaultValue
+) {
     if (!fs.existsSync(file)) {
-
         fs.writeFileSync(
             file,
             JSON.stringify(
@@ -66,7 +70,6 @@ createFileIfNotExists(
     {}
 );
 
-
 createFileIfNotExists(
     SESSIONS_FILE,
     {}
@@ -78,18 +81,14 @@ createFileIfNotExists(
 ===================================================== */
 
 function readJson(file) {
-
     try {
-
         return JSON.parse(
             fs.readFileSync(
                 file,
                 "utf8"
             )
         );
-
     } catch (error) {
-
         console.error(
             "Ошибка чтения:",
             file,
@@ -101,8 +100,10 @@ function readJson(file) {
 }
 
 
-function writeJson(file, data) {
-
+function writeJson(
+    file,
+    data
+) {
     fs.writeFileSync(
         file,
         JSON.stringify(
@@ -115,7 +116,9 @@ function writeJson(file, data) {
 
 
 function getUsers() {
-    return readJson(USERS_FILE);
+    return readJson(
+        USERS_FILE
+    );
 }
 
 
@@ -128,7 +131,9 @@ function saveUsers(users) {
 
 
 function getSessions() {
-    return readJson(SESIONS_FILE);
+    return readJson(
+        SESSIONS_FILE
+    );
 }
 
 
@@ -161,18 +166,27 @@ app.use(
 );
 
 
+/* =====================================================
+   STATIC FILES
+===================================================== */
+
 /*
-   Папка public должна содержать:
+   Папка public:
 
    public/
-       index.html
+       BOUNCE.html
        sounds/
+       css/
+       js/
        ...
 */
 
 app.use(
     express.static(
-        path.join(__dirname, "public")
+        path.join(
+            __dirname,
+            "public"
+        )
     )
 );
 
@@ -182,7 +196,6 @@ app.use(
 ===================================================== */
 
 function normalizeUsername(username) {
-
     return String(username || "")
         .trim()
         .toLowerCase();
@@ -190,19 +203,12 @@ function normalizeUsername(username) {
 
 
 function isValidUsername(username) {
-
-    /*
-       3-20 символов.
-       Только латиница, цифры и _.
-    */
-
     return /^[a-zA-Z0-9_]{3,20}$/
         .test(username);
 }
 
 
 function isValidPassword(password) {
-
     return (
         typeof password === "string" &&
         password.length >= 6 &&
@@ -212,14 +218,11 @@ function isValidPassword(password) {
 
 
 function createId() {
-
-    return crypto
-        .randomUUID();
+    return crypto.randomUUID();
 }
 
 
 function createSessionToken() {
-
     return crypto
         .randomBytes(32)
         .toString("hex");
@@ -237,7 +240,6 @@ const SESSION_TIME =
 
 
 function createSession(userId) {
-
     const sessions =
         getSessions();
 
@@ -245,7 +247,6 @@ function createSession(userId) {
         createSessionToken();
 
     sessions[token] = {
-
         userId,
 
         createdAt:
@@ -256,30 +257,34 @@ function createSession(userId) {
             SESSION_TIME
     };
 
-    saveSessions(sessions);
+    saveSessions(
+        sessions
+    );
 
     return token;
 }
 
 
 function deleteSession(token) {
-
-    if (!token)
+    if (!token) {
         return;
+    }
 
     const sessions =
         getSessions();
 
     delete sessions[token];
 
-    saveSessions(sessions);
+    saveSessions(
+        sessions
+    );
 }
 
 
 function getSession(token) {
-
-    if (!token)
+    if (!token) {
         return null;
+    }
 
     const sessions =
         getSessions();
@@ -287,18 +292,20 @@ function getSession(token) {
     const session =
         sessions[token];
 
-    if (!session)
+    if (!session) {
         return null;
+    }
 
 
     if (
         Date.now() >
         session.expiresAt
     ) {
-
         delete sessions[token];
 
-        saveSessions(sessions);
+        saveSessions(
+            sessions
+        );
 
         return null;
     }
@@ -313,25 +320,30 @@ function getSession(token) {
 ===================================================== */
 
 function getUserFromRequest(req) {
-
     const token =
-        req.cookies[SESSION_COOKIE];
+        req.cookies[
+            SESSION_COOKIE
+        ];
 
     const session =
         getSession(token);
 
-    if (!session)
+    if (!session) {
         return null;
+    }
 
 
     const users =
         getUsers();
 
     const user =
-        users[session.userId];
+        users[
+            session.userId
+        ];
 
-    if (!user)
+    if (!user) {
         return null;
+    }
 
 
     return user;
@@ -360,23 +372,33 @@ app.post(
                 );
 
 
-            if (!isValidUsername(username)) {
+            if (
+                !isValidUsername(
+                    username
+                )
+            ) {
 
-                return res.status(400).json({
-
-                    error:
-                        "Логин должен содержать 3-20 символов: a-z, 0-9 или _"
-                });
+                return res
+                    .status(400)
+                    .json({
+                        error:
+                            "Логин должен содержать 3-20 символов: a-z, 0-9 или _"
+                    });
             }
 
 
-            if (!isValidPassword(password)) {
+            if (
+                !isValidPassword(
+                    password
+                )
+            ) {
 
-                return res.status(400).json({
-
-                    error:
-                        "Пароль должен содержать от 6 до 100 символов"
-                });
+                return res
+                    .status(400)
+                    .json({
+                        error:
+                            "Пароль должен содержать от 6 до 100 символов"
+                    });
             }
 
 
@@ -384,23 +406,22 @@ app.post(
                 getUsers();
 
 
-            /*
-               Проверяем существование
-               username.
-            */
-
-            for (const id in users) {
+            for (
+                const id in users
+            ) {
 
                 if (
-                    users[id].username ===
+                    users[id]
+                        .username ===
                     username
                 ) {
 
-                    return res.status(409).json({
-
-                        error:
-                            "Такой пользователь уже существует"
-                    });
+                    return res
+                        .status(409)
+                        .json({
+                            error:
+                                "Такой пользователь уже существует"
+                        });
                 }
             }
 
@@ -438,12 +459,10 @@ app.post(
             };
 
 
-            saveUsers(users);
+            saveUsers(
+                users
+            );
 
-
-            /*
-               Сразу создаём сессию.
-            */
 
             const token =
                 createSession(
@@ -474,13 +493,15 @@ app.post(
                 success: true,
 
                 user: {
-                    id: userId,
+                    id:
+                        userId,
 
                     username,
 
                     level: 1,
 
-                    completedLevels: []
+                    completedLevels:
+                        []
                 }
             });
 
@@ -493,11 +514,12 @@ app.post(
             );
 
 
-            return res.status(500).json({
-
-                error:
-                    "Ошибка сервера"
-            });
+            return res
+                .status(500)
+                .json({
+                    error:
+                        "Ошибка сервера"
+                });
         }
     }
 );
@@ -532,10 +554,13 @@ app.post(
             let user = null;
 
 
-            for (const id in users) {
+            for (
+                const id in users
+            ) {
 
                 if (
-                    users[id].username ===
+                    users[id]
+                        .username ===
                     username
                 ) {
 
@@ -549,11 +574,12 @@ app.post(
 
             if (!user) {
 
-                return res.status(401).json({
-
-                    error:
-                        "Неверный логин или пароль"
-                });
+                return res
+                    .status(401)
+                    .json({
+                        error:
+                            "Неверный логин или пароль"
+                    });
             }
 
 
@@ -564,13 +590,16 @@ app.post(
                 );
 
 
-            if (!passwordCorrect) {
+            if (
+                !passwordCorrect
+            ) {
 
-                return res.status(401).json({
-
-                    error:
-                        "Неверный логин или пароль"
-                });
+                return res
+                    .status(401)
+                    .json({
+                        error:
+                            "Неверный логин или пароль"
+                    });
             }
 
 
@@ -603,7 +632,8 @@ app.post(
                 success: true,
 
                 user: {
-                    id: user.id,
+                    id:
+                        user.id,
 
                     username:
                         user.username,
@@ -625,11 +655,12 @@ app.post(
             );
 
 
-            return res.status(500).json({
-
-                error:
-                    "Ошибка сервера"
-            });
+            return res
+                .status(500)
+                .json({
+                    error:
+                        "Ошибка сервера"
+                });
         }
     }
 );
@@ -644,24 +675,30 @@ app.get(
     (req, res) => {
 
         const user =
-            getUserFromRequest(req);
+            getUserFromRequest(
+                req
+            );
 
 
         if (!user) {
 
-            return res.status(401).json({
-
-                authenticated: false
-            });
+            return res
+                .status(401)
+                .json({
+                    authenticated:
+                        false
+                });
         }
 
 
         return res.json({
 
-            authenticated: true,
+            authenticated:
+                true,
 
             user: {
-                id: user.id,
+                id:
+                    user.id,
 
                 username:
                     user.username,
@@ -689,10 +726,14 @@ app.post(
     (req, res) => {
 
         const token =
-            req.cookies[SESSION_COOKIE];
+            req.cookies[
+                SESSION_COOKIE
+            ];
 
 
-        deleteSession(token);
+        deleteSession(
+            token
+        );
 
 
         res.clearCookie(
@@ -701,7 +742,6 @@ app.post(
 
 
         res.json({
-
             success: true
         });
     }
@@ -717,16 +757,19 @@ app.post(
     (req, res) => {
 
         const user =
-            getUserFromRequest(req);
+            getUserFromRequest(
+                req
+            );
 
 
         if (!user) {
 
-            return res.status(401).json({
-
-                error:
-                    "Не авторизован"
-            });
+            return res
+                .status(401)
+                .json({
+                    error:
+                        "Не авторизован"
+                });
         }
 
 
@@ -742,16 +785,19 @@ app.post(
 
 
         const dbUser =
-            users[user.id];
+            users[
+                user.id
+            ];
 
 
         if (!dbUser) {
 
-            return res.status(404).json({
-
-                error:
-                    "Пользователь не найден"
-            });
+            return res
+                .status(404)
+                .json({
+                    error:
+                        "Пользователь не найден"
+                });
         }
 
 
@@ -776,32 +822,37 @@ app.post(
                 completedLevels
                     .filter(
                         n =>
-                            Number.isInteger(n) &&
+                            Number.isInteger(
+                                n
+                            ) &&
                             n >= 1 &&
                             n <= 5
                     );
         }
 
 
-        /*
-           Проверяем размер пиксельного
-           редактора.
-
-           Должно быть ровно 8x8.
-        */
+        /* =================================================
+           CUBE PIXELS
+        ================================================= */
 
         if (
-            Array.isArray(cubePixels) &&
+            Array.isArray(
+                cubePixels
+            ) &&
             cubePixels.length === 8
         ) {
 
             let valid = true;
 
 
-            for (const row of cubePixels) {
+            for (
+                const row of cubePixels
+            ) {
 
                 if (
-                    !Array.isArray(row) ||
+                    !Array.isArray(
+                        row
+                    ) ||
                     row.length !== 8
                 ) {
 
@@ -811,18 +862,32 @@ app.post(
                 }
 
 
-                for (const pixel of row) {
+                for (
+                    const pixel of row
+                ) {
 
-                    if (pixel === null)
+                    if (
+                        pixel === null
+                    ) {
                         continue;
+                    }
 
 
                     if (
-                        typeof pixel !== "object" ||
-                        typeof pixel.r !== "number" ||
-                        typeof pixel.g !== "number" ||
-                        typeof pixel.b !== "number" ||
-                        typeof pixel.a !== "number"
+                        typeof pixel !==
+                            "object" ||
+
+                        typeof pixel.r !==
+                            "number" ||
+
+                        typeof pixel.g !==
+                            "number" ||
+
+                        typeof pixel.b !==
+                            "number" ||
+
+                        typeof pixel.a !==
+                            "number"
                     ) {
 
                         valid = false;
@@ -832,8 +897,9 @@ app.post(
                 }
 
 
-                if (!valid)
+                if (!valid) {
                     break;
+                }
             }
 
 
@@ -849,11 +915,12 @@ app.post(
             Date.now();
 
 
-        saveUsers(users);
+        saveUsers(
+            users
+        );
 
 
         return res.json({
-
             success: true
         });
     }
@@ -864,21 +931,14 @@ app.post(
    SOCKET.IO AUTH
 ===================================================== */
 
-/*
-   Socket.IO получает cookie
-   из браузера.
-
-   На основании cookie
-   определяем пользователя.
-*/
-
 io.use(
     (socket, next) => {
 
         try {
 
             const cookieHeader =
-                socket.handshake.headers.cookie;
+                socket.handshake
+                    .headers.cookie;
 
 
             if (!cookieHeader) {
@@ -896,40 +956,57 @@ io.use(
 
             cookieHeader
                 .split(";")
-                .forEach(part => {
+                .forEach(
+                    part => {
 
-                    const index =
-                        part.indexOf("=");
-
-                    if (index === -1)
-                        return;
-
-
-                    const key =
-                        part
-                            .slice(0, index)
-                            .trim();
+                        const index =
+                            part.indexOf(
+                                "="
+                            );
 
 
-                    const value =
-                        part
-                            .slice(index + 1)
-                            .trim();
+                        if (
+                            index === -1
+                        ) {
+                            return;
+                        }
 
 
-                    cookies[key] =
-                        decodeURIComponent(
-                            value
-                        );
-                });
+                        const key =
+                            part
+                                .slice(
+                                    0,
+                                    index
+                                )
+                                .trim();
+
+
+                        const value =
+                            part
+                                .slice(
+                                    index + 1
+                                )
+                                .trim();
+
+
+                        cookies[key] =
+                            decodeURIComponent(
+                                value
+                            );
+                    }
+                );
 
 
             const token =
-                cookies[SESSION_COOKIE];
+                cookies[
+                    SESSION_COOKIE
+                ];
 
 
             const session =
-                getSession(token);
+                getSession(
+                    token
+                );
 
 
             if (!session) {
@@ -947,7 +1024,9 @@ io.use(
 
 
             const user =
-                users[session.userId];
+                users[
+                    session.userId
+                ];
 
 
             if (!user) {
@@ -960,14 +1039,10 @@ io.use(
             }
 
 
-            /*
-               Сохраняем пользователя
-               прямо в socket.
-            */
-
             socket.user = {
 
-                id: user.id,
+                id:
+                    user.id,
 
                 username:
                     user.username
@@ -1008,21 +1083,29 @@ io.on(
         );
 
 
-        /*
-           Отправляем клиенту информацию
-           о пользователе.
-        */
-
         const users =
             getUsers();
 
         const user =
-            users[socket.user.id];
+            users[
+                socket.user.id
+            ];
 
+
+        if (!user) {
+            socket.disconnect();
+            return;
+        }
+
+
+        /* =================================================
+           AUTH SUCCESS
+        ================================================= */
 
         socket.emit(
             "auth:success",
             {
+
                 id:
                     user.id,
 
@@ -1042,7 +1125,7 @@ io.on(
 
 
         /* =================================================
-           ЗАПРОС ПРОФИЛЯ
+           PROFILE
         ================================================= */
 
         socket.on(
@@ -1053,16 +1136,20 @@ io.on(
                     getUsers();
 
                 const user =
-                    users[socket.user.id];
+                    users[
+                        socket.user.id
+                    ];
 
 
-                if (!user)
+                if (!user) {
                     return;
+                }
 
 
                 socket.emit(
                     "profile",
                     {
+
                         id:
                             user.id,
 
@@ -1084,15 +1171,16 @@ io.on(
 
 
         /* =================================================
-           СОХРАНЕНИЕ КУБА
+           SAVE CUBE
         ================================================= */
 
         socket.on(
             "cube:save",
             data => {
 
-                if (!data)
+                if (!data) {
                     return;
+                }
 
 
                 const pixels =
@@ -1100,7 +1188,9 @@ io.on(
 
 
                 if (
-                    !Array.isArray(pixels) ||
+                    !Array.isArray(
+                        pixels
+                    ) ||
                     pixels.length !== 8
                 ) {
 
@@ -1113,7 +1203,9 @@ io.on(
                 ) {
 
                     if (
-                        !Array.isArray(row) ||
+                        !Array.isArray(
+                            row
+                        ) ||
                         row.length !== 8
                     ) {
 
@@ -1132,8 +1224,9 @@ io.on(
                     ];
 
 
-                if (!user)
+                if (!user) {
                     return;
+                }
 
 
                 user.cubePixels =
@@ -1143,7 +1236,9 @@ io.on(
                     Date.now();
 
 
-                saveUsers(users);
+                saveUsers(
+                    users
+                );
 
 
                 socket.emit(
@@ -1157,7 +1252,7 @@ io.on(
 
 
         /* =================================================
-           ЗАВЕРШЕНИЕ УРОВНЯ
+           COMPLETE LEVEL
         ================================================= */
 
         socket.on(
@@ -1169,7 +1264,9 @@ io.on(
 
 
                 if (
-                    !Number.isInteger(level) ||
+                    !Number.isInteger(
+                        level
+                    ) ||
                     level < 1 ||
                     level > 5
                 ) {
@@ -1188,8 +1285,9 @@ io.on(
                     ];
 
 
-                if (!user)
+                if (!user) {
                     return;
+                }
 
 
                 if (
@@ -1213,9 +1311,9 @@ io.on(
                 }
 
 
-                /*
-                   Открываем следующий уровень.
-                */
+                /* =================================================
+                   OPEN NEXT LEVEL
+                ================================================= */
 
                 if (
                     level >= user.level &&
@@ -1231,7 +1329,9 @@ io.on(
                     Date.now();
 
 
-                saveUsers(users);
+                saveUsers(
+                    users
+                );
 
 
                 socket.emit(
@@ -1252,7 +1352,7 @@ io.on(
 
 
         /* =================================================
-           CHAT / СООБЩЕНИЯ
+           CHAT
         ================================================= */
 
         socket.on(
@@ -1272,13 +1372,10 @@ io.on(
                     message.trim();
 
 
-                if (!message)
+                if (!message) {
                     return;
+                }
 
-
-                /*
-                   Ограничение длины.
-                */
 
                 if (
                     message.length > 200
@@ -1297,7 +1394,8 @@ io.on(
                     {
 
                         username:
-                            socket.user.username,
+                            socket.user
+                                .username,
 
                         message,
 
@@ -1310,7 +1408,7 @@ io.on(
 
 
         /* =================================================
-           ОТКЛЮЧЕНИЕ
+           DISCONNECT
         ================================================= */
 
         socket.on(
@@ -1327,18 +1425,62 @@ io.on(
 
 
 /* =====================================================
-   FALLBACK INDEX
+   ГЛАВНАЯ СТРАНИЦА
 ===================================================== */
 
+/*
+   ВАЖНО:
+   Используем BOUNCE.html,
+   а не index.html.
+
+   Файл должен находиться здесь:
+
+   public/BOUNCE.html
+*/
+
 app.get(
-    "/*splat",
+    "/",
     (req, res) => {
 
         res.sendFile(
             path.join(
                 __dirname,
                 "public",
-                "index.html"
+                "BOUNCE.html"
+            )
+        );
+    }
+);
+
+
+/* =====================================================
+   FALLBACK
+===================================================== */
+
+/*
+   Для остальных GET-запросов
+   также отдаём BOUNCE.html.
+
+   Здесь специально НЕТ "*"
+   и "/*splat", чтобы не было
+   ошибки path-to-regexp.
+*/
+
+app.use(
+    (req, res, next) => {
+
+        if (
+            req.method !== "GET"
+        ) {
+            return next();
+        }
+
+
+        res.sendFile(
+            path.join(
+                __dirname,
+                "public",
+                "BOUNCE.html"
             )
         );
     }
@@ -1363,7 +1505,7 @@ server.listen(
         );
 
         console.log(
-            ` http://localhost:${PORT}`
+            ` PORT: ${PORT}`
         );
 
         console.log(
