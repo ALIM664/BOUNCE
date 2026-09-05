@@ -3300,6 +3300,204 @@ async function login(username, password) {
     return data;
 }
 
+const createAccountButton =
+    document.getElementById("createAccountButton");
+
+const loginButton =
+    document.getElementById("loginButton");
+
+const logoutButton =
+    document.getElementById("logoutButton");
+
+const authStatus =
+    document.getElementById("authStatus");
+
+const authButtons =
+    document.getElementById("authButtons");
+
+
+function updateAuthUI(user) {
+
+    if (user) {
+
+        authStatus.textContent =
+            "Вы вошли как: " + user.username;
+
+        authButtons.style.display =
+            "none";
+
+        logoutButton.style.display =
+            "block";
+
+    } else {
+
+        authStatus.textContent =
+            "Не авторизован";
+
+        authButtons.style.display =
+            "flex";
+
+        logoutButton.style.display =
+            "none";
+    }
+}
+
+
+createAccountButton.addEventListener(
+    "click",
+    async () => {
+
+        const username =
+            prompt("Введите логин:");
+
+        if (!username)
+            return;
+
+        const password =
+            prompt("Введите пароль:");
+
+        if (!password)
+            return;
+
+        try {
+
+            const data =
+                await register(
+                    username,
+                    password
+                );
+
+            updateAuthUI(
+                data.user
+            );
+
+            alert(
+                "Аккаунт создан!"
+            );
+
+        } catch (error) {
+
+            alert(
+                error.message
+            );
+        }
+    }
+);
+
+
+loginButton.addEventListener(
+    "click",
+    async () => {
+
+        const username =
+            prompt("Введите логин:");
+
+        if (!username)
+            return;
+
+        const password =
+            prompt("Введите пароль:");
+
+        if (!password)
+            return;
+
+        try {
+
+            const data =
+                await login(
+                    username,
+                    password
+                );
+
+            updateAuthUI(
+                data.user
+            );
+
+            alert(
+                "Вы вошли в аккаунт!"
+            );
+
+        } catch (error) {
+
+            alert(
+                error.message
+            );
+        }
+    }
+);
+
+
+logoutButton.addEventListener(
+    "click",
+    async () => {
+
+        await fetch(
+            "/api/logout",
+            {
+                method: "POST"
+            }
+        );
+
+        updateAuthUI(null);
+
+        alert(
+            "Вы вышли из аккаунта."
+        );
+    }
+);
+
+
+/*
+   Проверяем аккаунт
+   при загрузке страницы.
+*/
+
+async function checkAuth() {
+
+    try {
+
+        const response =
+            await fetch("/api/me");
+
+        if (!response.ok) {
+
+            updateAuthUI(null);
+
+            return;
+        }
+
+        const data =
+            await response.json();
+
+        if (
+            data.authenticated &&
+            data.user
+        ) {
+
+            updateAuthUI(
+                data.user
+            );
+
+        } else {
+
+            updateAuthUI(null);
+        }
+
+    } catch (error) {
+
+        console.error(
+            "Ошибка проверки аккаунта:",
+            error
+        );
+
+        updateAuthUI(null);
+    }
+}
+
+
+checkAuth();
+
+
 
 
 /* =====================================================
