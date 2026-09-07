@@ -991,6 +991,40 @@ input[type="range"] {
 
 <script>
 
+const socket = io();
+
+socket.on("connect_error", error => {
+    console.log("Socket auth error:", error.message);
+});
+
+socket.on("auth:success", user => {
+    console.log("Socket авторизован:", user.username);
+
+    updateAuthUI(user);
+
+    if (user.cubePixels) {
+        loadSavedCube(user.cubePixels);
+    }
+
+    if (
+        Number.isInteger(user.level) &&
+        user.level >= 1 &&
+        user.level <= 5
+    ) {
+        selectedLevel = user.level;
+
+        document
+            .querySelectorAll(".level-btn")
+            .forEach(button => {
+                button.classList.toggle(
+                    "selected",
+                    Number(button.dataset.level) === selectedLevel
+                );
+            });
+    }
+});
+
+
 /* =====================================================
    PIXEL EDITOR
 ===================================================== */
@@ -3043,6 +3077,51 @@ function isColliding(c,b) {
             b.y + b.h
     );
 }
+
+
+function loadSavedCube(savedPixels) {
+
+    if (!Array.isArray(savedPixels))
+        return;
+
+    if (savedPixels.length !== 8)
+        return;
+
+    for (let y = 0; y < 8; y++) {
+
+        if (!Array.isArray(savedPixels[y]))
+            return;
+
+        if (savedPixels[y].length !== 8)
+            return;
+    }
+
+    for (let y = 0; y < 8; y++) {
+
+        for (let x = 0; x < 8; x++) {
+
+            const color = savedPixels[y][x];
+
+            if (!color) {
+
+                pixels[y][x] = null;
+
+                continue;
+            }
+
+            pixels[y][x] = {
+
+                r: Number(color.r),
+                g: Number(color.g),
+                b: Number(color.b),
+                a: Number(color.a)
+            };
+        }
+    }
+
+    drawPixelGrid();
+}
+
 
 async function register(username, password) {
 
