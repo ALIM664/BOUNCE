@@ -490,6 +490,120 @@ input[type="range"] {
     background: #d6455d;
 }
 
+.auth-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+
+    display: none;
+
+    align-items: center;
+    justify-content: center;
+
+    background: rgba(0,0,0,.65);
+
+    backdrop-filter: blur(8px);
+}
+
+.auth-modal.active {
+    display: flex;
+}
+
+.auth-window {
+    position: relative;
+
+    width: min(400px, 90vw);
+
+    padding: 28px;
+
+    border-radius: 20px;
+
+    background: #191e2d;
+
+    border: 1px solid rgba(255,255,255,.08);
+
+    box-shadow:
+        0 30px 80px rgba(0,0,0,.6);
+}
+
+.auth-window h2 {
+    margin: 0 0 20px;
+
+    text-align: center;
+}
+
+.auth-window input {
+    width: 100%;
+
+    margin-bottom: 12px;
+
+    padding: 13px 15px;
+
+    border: 1px solid #30374d;
+    border-radius: 10px;
+
+    outline: none;
+
+    background: #111522;
+    color: white;
+}
+
+.auth-window input:focus {
+    border-color: #6675ff;
+}
+
+.auth-close {
+    position: absolute;
+
+    top: 10px;
+    right: 12px;
+
+    border: none;
+
+    background: none;
+
+    color: #8e98b0;
+
+    font-size: 28px;
+
+    cursor: pointer;
+}
+
+.auth-submit {
+    width: 100%;
+
+    padding: 13px;
+
+    border: none;
+    border-radius: 10px;
+
+    background:
+        linear-gradient(
+            135deg,
+            #5865f2,
+            #7b61ff
+        );
+
+    color: white;
+
+    font-weight: bold;
+
+    cursor: pointer;
+}
+
+.auth-error {
+    min-height: 20px;
+
+    margin-top: 12px;
+
+    text-align: center;
+
+    color: #ff657d;
+
+    font-size: 13px;
+}
+
+
 
 </style>
 </head>
@@ -779,6 +893,54 @@ input[type="range"] {
         </button>
 
     </div>
+
+    <div id="authModal" class="auth-modal">
+
+        <div class="auth-window">
+
+            <button
+                class="auth-close"
+                id="authClose"
+            >
+                ×
+            </button>
+
+            <h2 id="authTitle">
+                Login
+            </h2>
+
+            <input
+                id="authUsername"
+                type="text"
+                placeholder="Username"
+                autocomplete="username"
+                maxlength="20"
+            >
+
+            <input
+                id="authPassword"
+                type="password"
+                placeholder="Password"
+                autocomplete="current-password"
+                maxlength="100"
+            >
+
+            <button
+                id="authSubmit"
+                class="auth-submit"
+            >
+                Login
+            </button>
+
+            <div
+                id="authError"
+                class="auth-error"
+            ></div>
+
+        </div>
+
+    </div>
+
 
 
 </section>
@@ -1383,31 +1545,31 @@ let selectedLevel = 1;
 const levelMusic = {
 
     1: {
-        file: "Infekt_-_Tendo_(SkySound7.com).mp3",
+        file: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/Infekt_-_Tendo_%28SkySound7.com%29.mp3",
         start: 25.5,
         end: 44.5
     },
 
     2: {
-        file: "157014_ParagonX9___Infiltration.mp3",
+        file: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/157014_ParagonX9___Infiltration.mp3",
         start: 13.2,
         end: 25.7
     },
 
     3: {
-        file: "1221458_Timmy-Trumpet-amp-Savage--.mp3",
+        file: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/1221458_Timmy-Trumpet-amp-Savage--.mp3",
         start: 58.3,
         end: 71.8
     },
 
     4: {
-        file: "NIVIRO - The Ghost [NCS Release].mp3",
+        file: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/NIVIRO - The Ghost [NCS Release].mp3",
         start: 93.8,
         end: 108.5
     },
 
     5: {
-        file: "Infekt_-_Into_Pieces_(SkySound7.com).mp3",
+        file: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/Infekt_-_Into_Pieces_(SkySound7.com).mp3",
         start: 25.5,
         end: 50.1
     }
@@ -1764,18 +1926,9 @@ function createLevel1() {
 
         {
             x: 50,
-            y: 200,
-            w: 30,
-            h: 300,
-            bounce: 0.5,
-            color: "#ffff00"
-        },
-
-        {
-            x: 50,
             y: -100,
             w: 30,
-            h: 300,
+            h: 600,
             bounce: 0.5,
             color: "#ffff00"
         },
@@ -1792,16 +1945,7 @@ function createLevel1() {
         {
             x: 50,
             y: -100,
-            w: 300,
-            h: 30,
-            bounce: 0.5,
-            color: "#ffff00"
-        },
-
-        {
-            x: 350,
-            y: -100,
-            w: 300,
+            w: 900,
             h: 30,
             bounce: 0.5,
             color: "#ffff00"
@@ -1810,25 +1954,7 @@ function createLevel1() {
         {
             x: 350,
             y: 200,
-            w: 300,
-            h: 30,
-            bounce: 0.5,
-            color: "#ffff00"
-        },
-
-        {
-            x: 650,
-            y: -100,
-            w: 300,
-            h: 30,
-            bounce: 0.5,
-            color: "#ffff00"
-        },
-
-        {
-            x: 650,
-            y: 200,
-            w: 300,
+            w: 600,
             h: 30,
             bounce: 0.5,
             color: "#ffff00"
@@ -1838,7 +1964,7 @@ function createLevel1() {
             x: 950,
             y: 200,
             w: 30,
-            h: 300,
+            h: 900,
             bounce: 0.5,
             color: "#ffff00"
         },
@@ -1847,34 +1973,7 @@ function createLevel1() {
             x: 1250,
             y: 200,
             w: 30,
-            h: 300,
-            bounce: 0.5,
-            color: "#ffff00"
-        },
-
-        {
-            x: 950,
-            y: 500,
-            w: 30,
-            h: 300,
-            bounce: 0.5,
-            color: "#ffff00"
-        },
-
-        {
-            x: 1250,
-            y: 500,
-            w: 30,
-            h: 300,
-            bounce: 0.5,
-            color: "#ffff00"
-        },
-
-        {
-            x: 950,
-            y: 800,
-            w: 30,
-            h: 300,
+            h: 600,
             bounce: 0.5,
             color: "#ffff00"
         },
@@ -1882,16 +1981,7 @@ function createLevel1() {
         {
             x: 950,
             y: 1100,
-            w: 300,
-            h: 30,
-            bounce: 0.5,
-            color: "#ffff00"
-        },
-
-        {
-            x: 1250,
-            y: 1100,
-            w: 300,
+            w: 1200,
             h: 30,
             bounce: 0.5,
             color: "#ffff00"
@@ -1900,34 +1990,7 @@ function createLevel1() {
         {
             x: 1250,
             y: 800,
-            w: 300,
-            h: 30,
-            bounce: 0.5,
-            color: "#ffff00"
-        },
-
-        {
-            x: 1550,
-            y: 1100,
-            w: 300,
-            h: 30,
-            bounce: 0.5,
-            color: "#ffff00"
-        },
-
-        {
-            x: 1550,
-            y: 800,
-            w: 300,
-            h: 30,
-            bounce: 0.5,
-            color: "#ffff00"
-        },
-
-        {
-            x: 1850,
-            y: 1100,
-            w: 300,
+            w: 600,
             h: 30,
             bounce: 0.5,
             color: "#ffff00"
@@ -1935,27 +1998,9 @@ function createLevel1() {
 
         {
             x: 2150,
-            y: 800,
-            w: 30,
-            h: 300,
-            bounce: 1.0,
-            color: "#ff0000"
-        },
-
-        {
-            x: 2150,
             y: 500,
             w: 30,
-            h: 300,
-            bounce: 1.0,
-            color: "#ff0000"
-        },
-
-        {
-            x: 1850,
-            y: 500,
-            w: 30,
-            h: 300,
+            h: 600,
             bounce: 1.0,
             color: "#ff0000"
         },
@@ -1963,7 +2008,7 @@ function createLevel1() {
         {
             x: 1850,
             y: 200,
-            w: 300,
+            w: 900,
             h: 30,
             bounce: 0.5,
             color: "#ffff00"
@@ -1973,42 +2018,15 @@ function createLevel1() {
             x: 1850,
             y: 200,
             w: 30,
-            h: 300,
+            h: 600,
             bounce: 1.0,
             color: "#ff0000"
         },
 
         {
             x: 2150,
-            y: 200,
-            w: 300,
-            h: 30,
-            bounce: 0.5,
-            color: "#ffff00"
-        },
-
-        {
-            x: 2150,
             y: 500,
-            w: 300,
-            h: 30,
-            bounce: 0.5,
-            color: "#ffff00"
-        },
-
-        {
-            x: 2450,
-            y: 200,
-            w: 300,
-            h: 30,
-            bounce: 0.5,
-            color: "#ffff00"
-        },
-
-        {
-            x: 2450,
-            y: 500,
-            w: 300,
+            w: 600,
             h: 30,
             bounce: 0.5,
             color: "#ffff00"
@@ -2017,7 +2035,7 @@ function createLevel1() {
         {
             x: 2750,
             y: 200,
-            w: 300,
+            w: 600,
             h: 30,
             bounce: 0.0,
             color: "#00ff00"
@@ -2033,28 +2051,10 @@ function createLevel1() {
         },
 
         {
-            x: 3050,
-            y: 200,
-            w: 300,
-            h: 30,
-            bounce: 0.0,
-            color: "#00ff00"
-        },
-
-        {
             x: 3350,
             y: 200,
             w: 30,
-            h: 300,
-            bounce: 0.0,
-            color: "#00ff00"
-        },
-
-        {
-            x: 3350,
-            y: 500,
-            w: 30,
-            h: 300,
+            h: 1800,
             bounce: 0.0,
             color: "#00ff00"
         },
@@ -2063,133 +2063,7 @@ function createLevel1() {
             x: 3050,
             y: 500,
             w: 30,
-            h: 300,
-            bounce: 0.0,
-            color: "#00ff00"
-        },
-
-        {
-            x: 3350,
-            y: 800,
-            w: 30,
-            h: 300,
-            bounce: 0.0,
-            color: "#00ff00"
-        },
-
-        {
-            x: 3050,
-            y: 800,
-            w: 30,
-            h: 300,
-            bounce: 0.0,
-            color: "#00ff00"
-        },
-
-        {
-            x: 3350,
-            y: 1100,
-            w: 30,
-            h: 300,
-            bounce: 0.0,
-            color: "#00ff00"
-        },
-
-        {
-            x: 3050,
-            y: 1100,
-            w: 30,
-            h: 300,
-            bounce: 0.0,
-            color: "#00ff00"
-        },
-
-        {
-            x: 3350,
-            y: 1400,
-            w: 30,
-            h: 300,
-            bounce: 0.0,
-            color: "#00ff00"
-        },
-
-        {
-            x: 3050,
-            y: 1400,
-            w: 30,
-            h: 300,
-            bounce: 0.0,
-            color: "#00ff00"
-        },
-
-        {
-            x: 3350,
-            y: 1700,
-            w: 30,
-            h: 300,
-            bounce: 0.0,
-            color: "#00ff00"
-        },
-
-        {
-            x: 3050,
-            y: 2000,
-            w: 300,
-            h: 30,
-            bounce: 0.0,
-            color: "#00ff00"
-        },
-
-        {
-            x: 2750,
-            y: 2000,
-            w: 300,
-            h: 30,
-            bounce: 0.0,
-            color: "#00ff00"
-        },
-
-        {
-            x: 2750,
-            y: 1700,
-            w: 300,
-            h: 30,
-            bounce: 0.0,
-            color: "#00ff00"
-        },
-
-        {
-            x: 2450,
-            y: 2000,
-            w: 300,
-            h: 30,
-            bounce: 0.0,
-            color: "#00ff00"
-        },
-
-        {
-            x: 2450,
-            y: 1700,
-            w: 300,
-            h: 30,
-            bounce: 0.0,
-            color: "#00ff00"
-        },
-
-        {
-            x: 2150,
-            y: 2000,
-            w: 300,
-            h: 30,
-            bounce: 0.0,
-            color: "#00ff00"
-        },
-
-        {
-            x: 2150,
-            y: 1700,
-            w: 300,
-            h: 30,
+            h: 1200,
             bounce: 0.0,
             color: "#00ff00"
         },
@@ -2214,27 +2088,9 @@ function createLevel1() {
 
         {
             x: 1550,
-            y: 1700,
+            y: 1510,
             w: 30,
-            h: 150,
-            bounce: 0.0,
-            color: "#00ff00"
-        },
-
-        {
-            x: 1850,
-            y: 2000,
-            w: 300,
-            h: 30,
-            bounce: 0.0,
-            color: "#00ff00"
-        },
-
-        {
-            x: 1550,
-            y: 2000,
-            w: 300,
-            h: 30,
+            h: 340,
             bounce: 0.0,
             color: "#00ff00"
         },
@@ -2242,16 +2098,7 @@ function createLevel1() {
         {
             x: 1250,
             y: 2000,
-            w: 300,
-            h: 30,
-            bounce: 0.0,
-            color: "#00ff00"
-        },
-
-        {
-            x: 1850,
-            y: 1700,
-            w: 300,
+            w: 2100,
             h: 30,
             bounce: 0.0,
             color: "#00ff00"
@@ -2260,7 +2107,7 @@ function createLevel1() {
         {
             x: 1550,
             y: 1700,
-            w: 300,
+            w: 1500,
             h: 30,
             bounce: 0.0,
             color: "#00ff00"
@@ -2268,27 +2115,9 @@ function createLevel1() {
 
         {
             x: 950,
-            y: 1700,
-            w: 30,
-            h: 300,
-            bounce: 1.0,
-            color: "#ff0000"
-        },
-
-        {
-            x: 950,
-            y: 1400,
-            w: 30,
-            h: 300,
-            bounce: 1.0,
-            color: "#ff0000"
-        },
-
-        {
-            x: 950,
             y: 1100,
             w: 30,
-            h: 300,
+            h: 900,
             bounce: 1.0,
             color: "#ff0000"
         },
@@ -2296,16 +2125,7 @@ function createLevel1() {
         {
             x: 1600,
             y: 1500,
-            w: 300,
-            h: 30,
-            bounce: 0.5,
-            color: "#ffff00"
-        },
-
-        {
-            x: 1900,
-            y: 1500,
-            w: 300,
+            w: 600,
             h: 30,
             bounce: 0.5,
             color: "#ffff00"
@@ -2335,7 +2155,7 @@ function createLevel1() {
 
         {
             x: 2450,
-            y: 1900,
+            y: 1950,
             w: 300,
             h: 30,
             bounce: 0,
@@ -3496,8 +3316,6 @@ async function checkAuth() {
 
 
 checkAuth();
-
-
 
 
 /* =====================================================
