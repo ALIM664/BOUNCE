@@ -3079,6 +3079,27 @@ function isColliding(c,b) {
 }
 
 
+function normalizeUsername(username) {
+    return String(username ?? "").trim().toLowerCase();
+}
+
+
+function isValidUsername(username) {
+    return (
+        typeof username === "string" &&
+        username.length > 0
+    );
+}
+
+
+function isValidPassword(password) {
+    return (
+        typeof password === "string" &&
+        password.length > 0
+    );
+}
+
+
 function loadSavedCube(savedPixels) {
 
     if (!Array.isArray(savedPixels))
