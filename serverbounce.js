@@ -202,18 +202,20 @@ function normalizeUsername(username) {
 
 
 function isValidUsername(username) {
-    return /^[a-zA-Z0-9_]{3,20}$/
-        .test(username);
+    return (
+        typeof username === "string" &&
+        username.length > 0
+    );
 }
 
 
 function isValidPassword(password) {
     return (
         typeof password === "string" &&
-        password.length >= 6 &&
-        password.length <= 100
+        password.length > 0
     );
 }
+
 
 
 function createId() {
