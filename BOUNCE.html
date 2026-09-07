@@ -603,6 +603,134 @@ input[type="range"] {
     font-size: 13px;
 }
 
+/* =====================================================
+   PLAYERS
+===================================================== */
+
+.players-panel {
+    margin-top: 25px;
+    padding: 20px;
+    border-radius: 18px;
+    background: #191e2d;
+    border: 1px solid rgba(255,255,255,.06);
+}
+
+.players-panel h2 {
+    margin: 0 0 15px;
+}
+
+.players-search input {
+    width: 100%;
+    padding: 13px 15px;
+    border: 1px solid #30374d;
+    border-radius: 10px;
+    outline: none;
+    background: #111522;
+    color: white;
+}
+
+.players-search input:focus {
+    border-color: #6675ff;
+}
+
+.players-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px;
+    margin-top: 15px;
+}
+
+.player-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 14px;
+    background: #111522;
+    border: 1px solid rgba(255,255,255,.06);
+}
+
+.player-id {
+    min-width: 34px;
+    height: 34px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 9px;
+
+    background: #5865f2;
+
+    color: white;
+    font-weight: bold;
+}
+
+.player-cube {
+    width: 64px;
+    height: 64px;
+
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+
+    border: 2px solid #394057;
+    border-radius: 6px;
+
+    overflow: hidden;
+    background: #0d1019;
+}
+
+.player-cube-pixel {
+    width: 100%;
+    aspect-ratio: 1;
+
+    background:
+        linear-gradient(
+            45deg,
+            #252a38 25%,
+            #171b27 25%,
+            #171b27 50%,
+            #252a38 50%,
+            #252a38 75%,
+            #171b27 75%
+        );
+
+    background-size: 8px 8px;
+}
+
+.player-name {
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+}
+
+.player-name strong {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.player-name span {
+    display: block;
+    margin-top: 4px;
+    color: #707a91;
+    font-size: 11px;
+}
+
+.players-empty {
+    padding: 20px;
+    text-align: center;
+    color: #707a91;
+}
+
+.players-loading {
+    padding: 20px;
+    text-align: center;
+    color: #707a91;
+}
+
+
 
 
 </style>
@@ -941,6 +1069,28 @@ input[type="range"] {
 
     </div>
 
+    <div class="players-panel">
+
+        <h2>Players</h2>
+
+        <div class="players-search">
+            <input
+                id="playerSearch"
+                type="text"
+                placeholder="Поиск игрока..."
+                autocomplete="off"
+            >
+        </div>
+
+        <div id="playersList" class="players-list">
+            <div class="players-loading">
+                Загрузка игроков...
+            </div>
+        </div>
+
+    </div>
+
+
 
 
 </section>
@@ -1023,6 +1173,203 @@ socket.on("auth:success", user => {
             });
     }
 });
+
+
+/* =====================================================
+   PLAYERS SEARCH
+===================================================== */
+
+let allPlayers = [];
+
+
+async function loadPlayers() {
+
+    try {
+
+        const response =
+            await fetch("/api/players");
+
+        if (!response.ok) {
+            throw new Error("Ошибка загрузки игроков");
+        }
+
+        allPlayers =
+            await response.json();
+
+        renderPlayers();
+
+    } catch (error) {
+
+        console.error(
+            "PLAYERS ERROR:",
+            error
+        );
+
+        document.getElementById(
+            "playersList"
+        ).innerHTML = `
+            <div class="players-empty">
+                Не удалось загрузить игроков
+            </div>
+        `;
+    }
+}
+
+
+function renderPlayers() {
+
+    const list =
+        document.getElementById(
+            "playersList"
+        );
+
+    const search =
+        document.getElementById(
+            "playerSearch"
+        ).value
+            .trim()
+            .toLowerCase();
+
+
+    const players =
+        allPlayers.filter(player => {
+
+            return (
+                player.username
+                    .toLowerCase()
+                    .includes(search) ||
+
+                String(player.id)
+                    .includes(search)
+            );
+        });
+
+
+    if (!players.length) {
+
+        list.innerHTML = `
+            <div class="players-empty">
+                Игроки не найдены
+            </div>
+        `;
+
+        return;
+    }
+
+
+    list.innerHTML = "";
+
+
+    players.forEach(player => {
+
+        const card =
+            document.createElement("div");
+
+        card.className =
+            "player-card";
+
+
+        const id =
+            document.createElement("div");
+
+        id.className =
+            "player-id";
+
+        id.textContent =
+            player.id;
+
+
+        const cube =
+            document.createElement("div");
+
+        cube.className =
+            "player-cube";
+
+
+        const pixels =
+            Array.isArray(player.cubePixels)
+                ? player.cubePixels
+                : null;
+
+
+        for (let y = 0; y < 8; y++) {
+
+            for (let x = 0; x < 8; x++) {
+
+                const pixel =
+                    document.createElement("div");
+
+                pixel.className =
+                    "player-cube-pixel";
+
+
+                if (
+                    pixels &&
+                    pixels[y] &&
+                    pixels[y][x]
+                ) {
+
+                    const color =
+                        pixels[y][x];
+
+
+                    pixel.style.background =
+                        `rgba(
+                            ${color.r},
+                            ${color.g},
+                            ${color.b},
+                            ${color.a}
+                        )`;
+                }
+
+
+                cube.appendChild(pixel);
+            }
+        }
+
+
+        const name =
+            document.createElement("div");
+
+        name.className =
+            "player-name";
+
+
+        name.innerHTML = `
+            <strong></strong>
+            <span>Player #${player.id}</span>
+        `;
+
+
+        name.querySelector("strong")
+            .textContent =
+                player.username;
+
+
+        card.appendChild(id);
+        card.appendChild(cube);
+        card.appendChild(name);
+
+        list.appendChild(card);
+    });
+}
+
+
+document.getElementById(
+    "playerSearch"
+).addEventListener(
+    "input",
+    renderPlayers
+);
+
+
+/*
+   Загружаем игроков после
+   загрузки страницы.
+*/
+
+loadPlayers();
+
 
 
 /* =====================================================
