@@ -349,6 +349,49 @@ function getUserFromRequest(req) {
 }
 
 
+
+function setSessionCookie(res, token) {
+    res.cookie(SESSION_COOKIE, token, {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+        maxAge: SESSION_TIME
+    });
+}
+
+function clearSessionCookie(res) {
+    res.clearCookie(SESSION_COOKIE, {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production"
+    });
+}
+
+function publicUser(user) {
+    return {
+        id: user.id,
+        username: user.username,
+        level: user.level,
+        completedLevels: user.completedLevels,
+        cubePixels: user.cubePixels
+    };
+}
+
+function requireAuth(req, res, next) {
+    const user = getUserFromRequest(req);
+
+    if (!user) {
+        return res.status(401).json({
+            error: "Не авторизован"
+        });
+    }
+
+    req.user = user;
+    next();
+}
+
+
+
 /* =====================================================
    REGISTER
 ===================================================== */
@@ -366,37 +409,39 @@ app.post(
 
 
             username =
-                normalizeUsername(
-                    username
-                );
+                normalizeUsername(username);
 
+
+            /*
+               Проверяем логин.
+            */
 
             if (
-                !isValidUsername(
-                    username
-                )
+                !isValidUsername(username)
             ) {
 
                 return res
                     .status(400)
                     .json({
                         error:
-                            "Логин должен содержать 3-20 символов: a-z, 0-9 или _"
+                            "Логин: 3–20 символов, только a-z, 0-9 и _"
                     });
             }
 
 
+            /*
+               Проверяем пароль.
+            */
+
             if (
-                !isValidPassword(
-                    password
-                )
+                !isValidPassword(password)
             ) {
 
                 return res
                     .status(400)
                     .json({
                         error:
-                            "Пароль должен содержать от 6 до 100 символов"
+                            "Пароль должен содержать 6–100 символов"
                     });
             }
 
@@ -405,25 +450,34 @@ app.post(
                 getUsers();
 
 
-            for (
-                const id in users
-            ) {
+            /*
+               Проверяем существование
+               пользователя.
+            */
 
-                if (
-                    users[id]
-                        .username ===
-                    username
-                ) {
+            const alreadyExists =
+                Object.values(users)
+                    .some(
+                        user =>
+                            user.username ===
+                            username
+                    );
 
-                    return res
-                        .status(409)
-                        .json({
-                            error:
-                                "Такой пользователь уже существует"
-                        });
-                }
+
+            if (alreadyExists) {
+
+                return res
+                    .status(409)
+                    .json({
+                        error:
+                            "Такой логин уже занят"
+                    });
             }
 
+
+            /*
+               Создаём пользователя.
+            */
 
             const userId =
                 createId();
@@ -436,7 +490,7 @@ app.post(
                 );
 
 
-            users[userId] = {
+            const user = {
 
                 id: userId,
 
@@ -458,32 +512,25 @@ app.post(
             };
 
 
-            saveUsers(
-                users
-            );
+            users[userId] =
+                user;
 
+
+            saveUsers(users);
+
+
+            /*
+               Автоматически
+               авторизуем пользователя.
+            */
 
             const token =
-                createSession(
-                    userId
-                );
+                createSession(userId);
 
 
-            res.cookie(
-                SESSION_COOKIE,
-                token,
-                {
-                    httpOnly: true,
-
-                    sameSite: "lax",
-
-                    secure:
-                        process.env.NODE_ENV ===
-                        "production",
-
-                    maxAge:
-                        SESSION_TIME
-                }
+            setSessionCookie(
+                res,
+                token
             );
 
 
@@ -491,17 +538,8 @@ app.post(
 
                 success: true,
 
-                user: {
-                    id:
-                        userId,
-
-                    username,
-
-                    level: 1,
-
-                    completedLevels:
-                        []
-                }
+                user:
+                    publicUser(user)
             });
 
 
@@ -512,7 +550,6 @@ app.post(
                 error
             );
 
-
             return res
                 .status(500)
                 .json({
@@ -522,6 +559,7 @@ app.post(
         }
     }
 );
+
 
 
 /* =====================================================
@@ -541,34 +579,34 @@ app.post(
 
 
             username =
-                normalizeUsername(
-                    username
-                );
+                normalizeUsername(username);
+
+
+            if (
+                !username ||
+                typeof password !== "string"
+            ) {
+
+                return res
+                    .status(401)
+                    .json({
+                        error:
+                            "Неверный логин или пароль"
+                    });
+            }
 
 
             const users =
                 getUsers();
 
 
-            let user = null;
-
-
-            for (
-                const id in users
-            ) {
-
-                if (
-                    users[id]
-                        .username ===
-                    username
-                ) {
-
-                    user =
-                        users[id];
-
-                    break;
-                }
-            }
+            const user =
+                Object.values(users)
+                    .find(
+                        u =>
+                            u.username ===
+                            username
+                    );
 
 
             if (!user) {
@@ -589,9 +627,7 @@ app.post(
                 );
 
 
-            if (
-                !passwordCorrect
-            ) {
+            if (!passwordCorrect) {
 
                 return res
                     .status(401)
@@ -602,27 +638,19 @@ app.post(
             }
 
 
+            /*
+               Создаём новую сессию.
+            */
+
             const token =
                 createSession(
                     user.id
                 );
 
 
-            res.cookie(
-                SESSION_COOKIE,
-                token,
-                {
-                    httpOnly: true,
-
-                    sameSite: "lax",
-
-                    secure:
-                        process.env.NODE_ENV ===
-                        "production",
-
-                    maxAge:
-                        SESSION_TIME
-                }
+            setSessionCookie(
+                res,
+                token
             );
 
 
@@ -630,19 +658,8 @@ app.post(
 
                 success: true,
 
-                user: {
-                    id:
-                        user.id,
-
-                    username:
-                        user.username,
-
-                    level:
-                        user.level,
-
-                    completedLevels:
-                        user.completedLevels
-                }
+                user:
+                    publicUser(user)
             });
 
 
@@ -652,7 +669,6 @@ app.post(
                 "LOGIN ERROR:",
                 error
             );
-
 
             return res
                 .status(500)
@@ -665,6 +681,7 @@ app.post(
 );
 
 
+
 /* =====================================================
    CURRENT USER
 ===================================================== */
@@ -674,9 +691,7 @@ app.get(
     (req, res) => {
 
         const user =
-            getUserFromRequest(
-                req
-            );
+            getUserFromRequest(req);
 
 
         if (!user) {
@@ -684,36 +699,21 @@ app.get(
             return res
                 .status(401)
                 .json({
-                    authenticated:
-                        false
+                    authenticated: false
                 });
         }
 
 
         return res.json({
 
-            authenticated:
-                true,
+            authenticated: true,
 
-            user: {
-                id:
-                    user.id,
-
-                username:
-                    user.username,
-
-                level:
-                    user.level,
-
-                completedLevels:
-                    user.completedLevels,
-
-                cubePixels:
-                    user.cubePixels
-            }
+            user:
+                publicUser(user)
         });
     }
 );
+
 
 
 /* =====================================================
@@ -725,26 +725,29 @@ app.post(
     (req, res) => {
 
         const token =
-            req.cookies[
-                SESSION_COOKIE
-            ];
+            req.cookies[SESSION_COOKIE];
 
 
-        deleteSession(
-            token
-        );
+        /*
+           Удаляем серверную сессию.
+        */
+
+        deleteSession(token);
 
 
-        res.clearCookie(
-            SESSION_COOKIE
-        );
+        /*
+           Удаляем cookie браузера.
+        */
+
+        clearSessionCookie(res);
 
 
-        res.json({
+        return res.json({
             success: true
         });
     }
 );
+
 
 
 /* =====================================================
@@ -752,44 +755,38 @@ app.post(
 ===================================================== */
 
 app.post(
-    "/api/save",
+    "/api/level/complete",
+    requireAuth,
     (req, res) => {
 
-        const user =
-            getUserFromRequest(
-                req
-            );
+        const level =
+            Number(req.body.level);
 
 
-        if (!user) {
+        if (
+            !Number.isInteger(level) ||
+            level < 1 ||
+            level > 5
+        ) {
 
             return res
-                .status(401)
+                .status(400)
                 .json({
                     error:
-                        "Не авторизован"
+                        "Неверный уровень"
                 });
         }
-
-
-        const {
-            level,
-            completedLevels,
-            cubePixels
-        } = req.body;
 
 
         const users =
             getUsers();
 
 
-        const dbUser =
-            users[
-                user.id
-            ];
+        const user =
+            users[req.user.id];
 
 
-        if (!dbUser) {
+        if (!user) {
 
             return res
                 .status(404)
@@ -801,129 +798,63 @@ app.post(
 
 
         if (
-            Number.isInteger(level) &&
-            level >= 1 &&
-            level <= 5
-        ) {
-
-            dbUser.level =
-                level;
-        }
-
-
-        if (
-            Array.isArray(
-                completedLevels
+            !Array.isArray(
+                user.completedLevels
             )
         ) {
 
-            dbUser.completedLevels =
-                completedLevels
-                    .filter(
-                        n =>
-                            Number.isInteger(
-                                n
-                            ) &&
-                            n >= 1 &&
-                            n <= 5
-                    );
+            user.completedLevels = [];
         }
 
 
-        /* =================================================
-           CUBE PIXELS
-        ================================================= */
+        /*
+           Добавляем уровень,
+           если он ещё не пройден.
+        */
 
         if (
-            Array.isArray(
-                cubePixels
-            ) &&
-            cubePixels.length === 8
+            !user.completedLevels.includes(level)
         ) {
 
-            let valid = true;
+            user.completedLevels.push(level);
 
-
-            for (
-                const row of cubePixels
-            ) {
-
-                if (
-                    !Array.isArray(
-                        row
-                    ) ||
-                    row.length !== 8
-                ) {
-
-                    valid = false;
-
-                    break;
-                }
-
-
-                for (
-                    const pixel of row
-                ) {
-
-                    if (
-                        pixel === null
-                    ) {
-                        continue;
-                    }
-
-
-                    if (
-                        typeof pixel !==
-                            "object" ||
-
-                        typeof pixel.r !==
-                            "number" ||
-
-                        typeof pixel.g !==
-                            "number" ||
-
-                        typeof pixel.b !==
-                            "number" ||
-
-                        typeof pixel.a !==
-                            "number"
-                    ) {
-
-                        valid = false;
-
-                        break;
-                    }
-                }
-
-
-                if (!valid) {
-                    break;
-                }
-            }
-
-
-            if (valid) {
-
-                dbUser.cubePixels =
-                    cubePixels;
-            }
+            user.completedLevels.sort(
+                (a, b) => a - b
+            );
         }
 
 
-        dbUser.updatedAt =
+        /*
+           Открываем следующий уровень.
+        */
+
+        if (
+            level >= user.level &&
+            level < 5
+        ) {
+
+            user.level =
+                level + 1;
+        }
+
+
+        user.updatedAt =
             Date.now();
 
 
-        saveUsers(
-            users
-        );
+        saveUsers(users);
 
 
         return res.json({
-            success: true
+
+            success: true,
+
+            user:
+                publicUser(user)
         });
     }
 );
+
 
 
 /* =====================================================
