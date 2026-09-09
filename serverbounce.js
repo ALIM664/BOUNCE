@@ -1127,63 +1127,39 @@ app.get(
     "/api/players",
     (req, res) => {
 
-        const users =
-            getUsers();
-
+        const users = getUsers();
 
         const search =
             String(
-                req.query.search ??
-                ""
+                req.query.search ?? ""
             )
                 .trim()
                 .toLowerCase();
 
-
         let players =
             Object.values(users);
-
-
-        /*
-           Поиск по ID или нику.
-        */
 
         if (search) {
 
             players =
-                players.filter(
-                    user => {
+                players.filter(user => {
 
-                        const id =
-                            String(
-                                user.id
-                            );
+                    const username =
+                        String(
+                            user.username ?? ""
+                        ).toLowerCase();
 
-
-                        const username =
-                            String(
-                                user.username ??
-                                ""
-                            )
-                                .toLowerCase();
-
-
-                        return (
-                            id.includes(
-                                search
-                            ) ||
-                            username.includes(
-                                search
-                            )
+                    const id =
+                        String(
+                            user.id ?? ""
                         );
-                    }
-                );
+
+                    return (
+                        username.includes(search) ||
+                        id.includes(search)
+                    );
+                });
         }
-
-
-        /*
-           Сортировка по ID.
-        */
 
         players.sort(
             (a, b) =>
@@ -1191,33 +1167,23 @@ app.get(
                 Number(b.id)
         );
 
-
-        /*
-           Не отдаём пароли.
-        */
-
         const result =
-            players.map(
-                user => ({
+            players.map(user => ({
 
-                    id:
-                        Number(
-                            user.id
-                        ),
+                id:
+                    Number(user.id),
 
-                    username:
-                        user.username,
+                username:
+                    user.username,
 
-                    cubePixels:
-                        user.cubePixels
-                })
-            );
+                cubePixels:
+                    user.cubePixels
+            }));
 
-
-        return res.json(result);
-
+        res.json(result);
     }
 );
+
 
 
 /* =====================================================
