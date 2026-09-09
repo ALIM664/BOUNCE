@@ -1075,6 +1075,19 @@ input[type="range"] {
 
         <div class="players-search">
             <input
+                type="text"
+                id="playerSearch"
+                placeholder="Поиск по нику или ID..."
+            >
+
+            <button id="playerSearchButton">
+                🔎 Найти
+            </button>
+        </div>
+
+
+        <div class="players-search">
+            <input
                 id="playerSearch"
                 type="text"
                 placeholder="Поиск игрока..."
@@ -1181,7 +1194,6 @@ socket.on("auth:success", user => {
 
 let allPlayers = [];
 
-
 async function loadPlayers() {
 
     try {
@@ -1219,14 +1231,11 @@ async function loadPlayers() {
 function renderPlayers() {
 
     const list =
-        document.getElementById(
-            "playersList"
-        );
+        document.getElementById("playersList");
 
     const search =
-        document.getElementById(
-            "playerSearch"
-        ).value
+        document.getElementById("playerSearch")
+            .value
             .trim()
             .toLowerCase();
 
@@ -1234,15 +1243,22 @@ function renderPlayers() {
     const players =
         allPlayers.filter(player => {
 
-            return (
-                player.username
-                    .toLowerCase()
-                    .includes(search) ||
+            const username =
+                String(
+                    player.username ?? ""
+                ).toLowerCase();
 
-                String(player.id)
-                    .includes(search)
+            const id =
+                String(
+                    player.id ?? ""
+                ).toLowerCase();
+
+            return (
+                username.includes(search) ||
+                id.includes(search)
             );
         });
+
 
 
     if (!players.length) {
@@ -1312,7 +1328,6 @@ function renderPlayers() {
                     const color =
                         pixels[y][x];
 
-
                     pixel.style.background =
                         `rgba(
                             ${color.r},
@@ -1335,15 +1350,35 @@ function renderPlayers() {
             "player-name";
 
 
+        const username =
+            String(player.username ?? "");
+
+
+        const rank =
+            String(
+                player.rank ??
+                player.title ??
+                player.role ??
+                player.rankName ??
+                "Без звания"
+            );
+
+
         name.innerHTML = `
             <strong></strong>
             <span>Player #${player.id}</span>
+            <small></small>
         `;
 
 
         name.querySelector("strong")
             .textContent =
-                player.username;
+                username;
+
+
+        name.querySelector("small")
+            .textContent =
+                rank;
 
 
         card.appendChild(id);
@@ -1355,12 +1390,44 @@ function renderPlayers() {
 }
 
 
-document.getElementById(
-    "playerSearch"
-).addEventListener(
-    "input",
-    renderPlayers
+
+const playerSearch =
+    document.getElementById(
+        "playerSearch"
+    );
+
+const playerSearchButton =
+    document.getElementById(
+        "playerSearchButton"
+    );
+
+
+playerSearchButton.addEventListener(
+    "click",
+    () => {
+
+        renderPlayers();
+    }
 );
+
+
+/*
+   Поиск по Enter
+*/
+
+playerSearch.addEventListener(
+    "keydown",
+    event => {
+
+        if (
+            event.key === "Enter"
+        ) {
+
+            renderPlayers();
+        }
+    }
+);
+
 
 
 /*
