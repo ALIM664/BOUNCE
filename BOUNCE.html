@@ -1154,11 +1154,53 @@ input[type="range"] {
 
 <script>
 
-const socket = io();
+const socket = io({
+    withCredentials: true
+});
 
 socket.on("connect_error", error => {
-    console.log("Socket auth error:", error.message);
+    console.log(
+        "Socket auth error:",
+        error.message
+    );
 });
+
+socket.on("auth:success", user => {
+
+    console.log(
+        "Socket авторизован:",
+        user.username
+    );
+
+    updateAuthUI(user);
+
+    if (user.cubePixels) {
+        loadSavedCube(user.cubePixels);
+    }
+
+    if (
+        Number.isInteger(user.level) &&
+        user.level >= 1 &&
+        user.level <= 5
+    ) {
+
+        selectedLevel =
+            user.level;
+
+        document
+            .querySelectorAll(".level-btn")
+            .forEach(button => {
+
+                button.classList.toggle(
+                    "selected",
+                    Number(
+                        button.dataset.level
+                    ) === selectedLevel
+                );
+            });
+    }
+});
+
 
 socket.on("auth:success", user => {
     console.log("Socket авторизован:", user.username);
@@ -1911,6 +1953,8 @@ function paintPixel(e) {
 
 
     drawPixelGrid();
+
+    saveCube();
 }
 
 
@@ -1942,6 +1986,63 @@ window.addEventListener(
         drawing = false;
     }
 );
+
+/* =====================================================
+   СОХРАНЕНИЕ КУБА
+===================================================== */
+
+function saveCube() {
+
+    if (!socket.connected) {
+
+        console.log(
+            "Куб не сохранён: Socket.IO не подключён"
+        );
+
+        return;
+    }
+
+
+    /*
+       Создаём независимую копию массива,
+       чтобы данные не изменились во время отправки.
+    */
+
+    const cubePixels =
+        pixels.map(row =>
+            row.map(pixel =>
+                pixel
+                    ? { ...pixel }
+                    : null
+            )
+        );
+
+
+    socket.emit(
+        "cube:save",
+        {
+            pixels: cubePixels
+        }
+    );
+}
+
+
+socket.on(
+    "cube:saved",
+    data => {
+
+        if (
+            data &&
+            data.success
+        ) {
+
+            console.log(
+                "Куб успешно сохранён"
+            );
+        }
+    }
+);
+
 
 
 /* =====================================================
