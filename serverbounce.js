@@ -1214,14 +1214,8 @@ app.get(
             );
 
 
-        return res.json({
+        return res.json(result);
 
-            success:
-                true,
-
-            players:
-                result
-        });
     }
 );
 
