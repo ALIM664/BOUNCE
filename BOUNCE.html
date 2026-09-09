@@ -1194,15 +1194,21 @@ socket.on("auth:success", user => {
 
 let allPlayers = [];
 
-async function loadPlayers() {
+async function loadPlayers(search = "") {
 
     try {
 
         const response =
-            await fetch("/api/players");
+            await fetch(
+                "/api/players?search=" +
+                encodeURIComponent(search)
+            );
 
         if (!response.ok) {
-            throw new Error("Ошибка загрузки игроков");
+            throw new Error(
+                "Ошибка загрузки игроков: " +
+                response.status
+            );
         }
 
         allPlayers =
@@ -1226,6 +1232,7 @@ async function loadPlayers() {
         `;
     }
 }
+
 
 
 function renderPlayers() {
@@ -1406,9 +1413,28 @@ playerSearchButton.addEventListener(
     "click",
     () => {
 
-        renderPlayers();
+        loadPlayers(
+            playerSearch.value
+        );
     }
 );
+
+
+playerSearch.addEventListener(
+    "keydown",
+    event => {
+
+        if (event.key === "Enter") {
+
+            loadPlayers(
+                playerSearch.value
+            );
+        }
+    }
+);
+
+loadPlayers();
+
 
 
 /*
