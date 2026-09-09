@@ -15,66 +15,50 @@ const PORT = process.env.PORT || 3000;
 
 const app = express();
 
-const server =
-    http.createServer(app);
+const server = http.createServer(app);
 
-const io =
-    new Server(server, {
-        cors: {
-            origin: true,
-            credentials: true
-        }
-    });
+const io = new Server(server, {
+    cors: {
+        origin: true,
+        credentials: true
+    }
+});
 
 
 /* =====================================================
-   ПАПКИ
+   ПАПКИ И ФАЙЛЫ
 ===================================================== */
 
-const DATA_DIR =
-    path.join(
-        __dirname,
-        "data"
-    );
+const DATA_DIR = path.join(__dirname, "data");
 
-const USERS_FILE =
-    path.join(
-        DATA_DIR,
-        "users.json"
-    );
+const USERS_FILE = path.join(
+    DATA_DIR,
+    "users.json"
+);
 
-const SESSIONS_FILE =
-    path.join(
-        DATA_DIR,
-        "sessions.json"
-    );
+const SESSIONS_FILE = path.join(
+    DATA_DIR,
+    "sessions.json"
+);
 
 
 if (!fs.existsSync(DATA_DIR)) {
-
-    fs.mkdirSync(
-        DATA_DIR,
-        {
-            recursive: true
-        }
-    );
+    fs.mkdirSync(DATA_DIR, {
+        recursive: true
+    });
 }
 
 
-function createFileIfNotExists(
-    file,
-    defaultValue
-) {
-
+function createFileIfNotExists(file, defaultValue) {
     if (!fs.existsSync(file)) {
-
         fs.writeFileSync(
             file,
             JSON.stringify(
                 defaultValue,
                 null,
                 2
-            )
+            ),
+            "utf8"
         );
     }
 }
@@ -96,20 +80,22 @@ createFileIfNotExists(
 ===================================================== */
 
 function readJson(file) {
-
     try {
-
-        return JSON.parse(
-            fs.readFileSync(
-                file,
-                "utf8"
-            )
+        const text = fs.readFileSync(
+            file,
+            "utf8"
         );
+
+        if (!text.trim()) {
+            return {};
+        }
+
+        return JSON.parse(text);
 
     } catch (error) {
 
         console.error(
-            "Ошибка чтения:",
+            "Ошибка чтения JSON:",
             file,
             error
         );
@@ -119,24 +105,46 @@ function readJson(file) {
 }
 
 
-function writeJson(
-    file,
-    data
-) {
+function writeJson(file, data) {
 
-    fs.writeFileSync(
-        file,
-        JSON.stringify(
-            data,
-            null,
-            2
-        )
-    );
+    const tempFile =
+        file + ".tmp";
+
+    try {
+
+        fs.writeFileSync(
+            tempFile,
+            JSON.stringify(
+                data,
+                null,
+                2
+            ),
+            "utf8"
+        );
+
+        fs.renameSync(
+            tempFile,
+            file
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Ошибка записи JSON:",
+            file,
+            error
+        );
+
+        try {
+            if (fs.existsSync(tempFile)) {
+                fs.unlinkSync(tempFile);
+            }
+        } catch {}
+    }
 }
 
 
 function getUsers() {
-
     return readJson(
         USERS_FILE
     );
@@ -144,7 +152,6 @@ function getUsers() {
 
 
 function saveUsers(users) {
-
     writeJson(
         USERS_FILE,
         users
@@ -153,7 +160,6 @@ function saveUsers(users) {
 
 
 function getSessions() {
-
     return readJson(
         SESSIONS_FILE
     );
@@ -161,7 +167,6 @@ function getSessions() {
 
 
 function saveSessions(sessions) {
-
     writeJson(
         SESSIONS_FILE,
         sessions
@@ -191,14 +196,12 @@ app.use(
 
 
 /* =====================================================
-   STATIC FILES
+   STATIC
 ===================================================== */
 
 app.use(
     express.static(
-        path.join(
-            __dirname
-        )
+        __dirname
     )
 );
 
@@ -206,13 +209,6 @@ app.use(
 /* =====================================================
    УТИЛИТЫ
 ===================================================== */
-
-/*
-   Ник может содержать любые символы.
-
-   Единственное ограничение:
-   он не должен быть пустым.
-*/
 
 function normalizeUsername(username) {
 
@@ -233,14 +229,6 @@ function isValidUsername(username) {
 }
 
 
-/*
-   Пароль может быть любой длины
-   и содержать любые символы.
-
-   Единственное ограничение:
-   пароль не должен быть пустым.
-*/
-
 function isValidPassword(password) {
 
     return (
@@ -251,27 +239,14 @@ function isValidPassword(password) {
 
 
 /* =====================================================
-   ЧИСЛОВОЙ ID ИГРОКА
+   PLAYER ID
 ===================================================== */
-
-/*
-   ID:
-
-   первый игрок  -> 1
-   второй игрок  -> 2
-   третий игрок  -> 3
-
-   ID никогда не переиспользуется.
-*/
 
 function createPlayerId(users) {
 
     const ids =
         Object.values(users)
-            .map(
-                user =>
-                    Number(user.id)
-            )
+            .map(user => Number(user.id))
             .filter(
                 id =>
                     Number.isInteger(id) &&
@@ -282,42 +257,21 @@ function createPlayerId(users) {
         return 1;
     }
 
-    return (
-        Math.max(...ids) + 1
-    );
+    return Math.max(...ids) + 1;
 }
 
 
 /* =====================================================
-   МИГРАЦИЯ СТАРЫХ ID
+   МИГРАЦИЯ ID
 ===================================================== */
-
-/*
-   Если раньше пользователи создавались
-   через crypto.randomUUID(), здесь им
-   автоматически выдаются числовые ID.
-
-   Например:
-
-   UUID -> 1
-   UUID -> 2
-   UUID -> 3
-*/
 
 function migrateUserIds() {
 
-    const users =
-        getUsers();
+    const users = getUsers();
 
     let changed = false;
 
-    const usedIds =
-        new Set();
-
-    /*
-       Сначала сохраняем уже существующие
-       числовые ID.
-    */
+    const usedIds = new Set();
 
     for (
         const user of
@@ -337,14 +291,13 @@ function migrateUserIds() {
     }
 
 
-    /*
-       Находим следующий свободный ID.
-    */
-
     let nextId =
         usedIds.size > 0
             ? Math.max(...usedIds) + 1
             : 1;
+
+
+    const newUsers = {};
 
 
     for (
@@ -352,89 +305,96 @@ function migrateUserIds() {
         of Object.entries(users)
     ) {
 
-        const numericId =
+        let id =
             Number(user.id);
 
 
+        if (
+            !Number.isInteger(id) ||
+            id < 1
+        ) {
+
+            while (
+                usedIds.has(nextId)
+            ) {
+                nextId++;
+            }
+
+            id = nextId;
+
+            usedIds.add(id);
+
+            nextId++;
+
+            changed = true;
+        }
+
+
+        user.id = id;
+
+
         /*
-           Уже правильный ID.
+           Старые данные могли не иметь
+           этих полей.
         */
 
         if (
-            Number.isInteger(numericId) &&
-            numericId > 0
+            !Array.isArray(
+                user.completedLevels
+            )
         ) {
 
-            /*
-               Если ключ старый UUID,
-               переносим запись на числовой ключ.
-            */
+            user.completedLevels = [];
 
-            if (
-                key !==
-                String(numericId)
-            ) {
-
-                delete users[key];
-
-                users[
-                    String(numericId)
-                ] = user;
-
-                changed = true;
-            }
-
-            continue;
+            changed = true;
         }
 
 
-        /*
-           Старый UUID или неправильный ID.
-        */
-
-        while (
-            usedIds.has(nextId)
+        if (
+            typeof user.level !== "number"
         ) {
 
-            nextId++;
+            user.level = 1;
+
+            changed = true;
         }
 
 
-        user.id =
-            nextId;
+        if (
+            !Object.prototype.hasOwnProperty.call(
+                user,
+                "cubePixels"
+            )
+        ) {
 
-        users[
-            String(nextId)
+            user.cubePixels = null;
+
+            changed = true;
+        }
+
+
+        newUsers[
+            String(id)
         ] = user;
 
 
         if (
-            key !==
-            String(nextId)
+            key !== String(id)
         ) {
 
-            delete users[key];
+            changed = true;
         }
-
-
-        usedIds.add(
-            nextId
-        );
-
-        nextId++;
-
-        changed = true;
     }
 
 
     if (changed) {
 
         saveUsers(
-            users
+            newUsers
         );
 
         console.log(
-            "Старые ID пользователей перенумерованы."
+            "Миграция пользователей выполнена."
         );
     }
 }
@@ -447,8 +407,7 @@ migrateUserIds();
    SESSION
 ===================================================== */
 
-const SESSION_COOKIE =
-    "session";
+const SESSION_COOKIE = "session";
 
 const SESSION_TIME =
     1000 *
@@ -474,17 +433,19 @@ function createSession(userId) {
     const token =
         createSessionToken();
 
+    const now =
+        Date.now();
 
     sessions[token] = {
 
-        userId,
+        userId:
+            Number(userId),
 
         createdAt:
-            Date.now(),
+            now,
 
         expiresAt:
-            Date.now() +
-            SESSION_TIME
+            now + SESSION_TIME
     };
 
 
@@ -503,30 +464,38 @@ function deleteSession(token) {
         return;
     }
 
-
     const sessions =
         getSessions();
 
+    if (
+        Object.prototype.hasOwnProperty.call(
+            sessions,
+            token
+        )
+    ) {
 
-    delete sessions[token];
+        delete sessions[token];
 
-
-    saveSessions(
-        sessions
-    );
+        saveSessions(
+            sessions
+        );
+    }
 }
 
 
 function getSession(token) {
 
-    if (!token) {
+    if (
+        !token ||
+        typeof token !== "string"
+    ) {
+
         return null;
     }
 
 
     const sessions =
         getSessions();
-
 
     const session =
         sessions[token];
@@ -538,8 +507,9 @@ function getSession(token) {
 
 
     if (
+        !session.expiresAt ||
         Date.now() >
-        session.expiresAt
+        Number(session.expiresAt)
     ) {
 
         delete sessions[token];
@@ -557,7 +527,7 @@ function getSession(token) {
 
 
 /* =====================================================
-   AUTH FROM REQUEST
+   USER FROM REQUEST
 ===================================================== */
 
 function getUserFromRequest(req) {
@@ -566,6 +536,11 @@ function getUserFromRequest(req) {
         req.cookies[
             SESSION_COOKIE
         ];
+
+
+    if (!token) {
+        return null;
+    }
 
 
     const session =
@@ -583,11 +558,23 @@ function getUserFromRequest(req) {
 
     const user =
         users[
-            String(session.userId)
+            String(
+                session.userId
+            )
         ];
 
 
     if (!user) {
+
+        /*
+           Если пользователя больше нет,
+           удаляем его сессию.
+        */
+
+        deleteSession(
+            token
+        );
+
         return null;
     }
 
@@ -618,7 +605,9 @@ function setSessionCookie(
                 "production",
 
             maxAge:
-                SESSION_TIME
+                SESSION_TIME,
+
+            path: "/"
         }
     );
 }
@@ -635,7 +624,9 @@ function clearSessionCookie(res) {
 
             secure:
                 process.env.NODE_ENV ===
-                "production"
+                "production",
+
+            path: "/"
         }
     );
 }
@@ -656,13 +647,17 @@ function publicUser(user) {
             user.username,
 
         level:
-            user.level,
+            Number(user.level || 1),
 
         completedLevels:
-            user.completedLevels,
+            Array.isArray(
+                user.completedLevels
+            )
+                ? user.completedLevels
+                : [],
 
         cubePixels:
-            user.cubePixels
+            user.cubePixels ?? null
     };
 }
 
@@ -716,19 +711,11 @@ app.post(
             } = req.body;
 
 
-            /*
-               Приводим ник к строке.
-            */
-
             username =
                 normalizeUsername(
                     username
                 );
 
-
-            /*
-               Проверяем ник.
-            */
 
             if (
                 !isValidUsername(
@@ -744,10 +731,6 @@ app.post(
                     });
             }
 
-
-            /*
-               Проверяем пароль.
-            */
 
             if (
                 !isValidPassword(
@@ -767,10 +750,6 @@ app.post(
             const users =
                 getUsers();
 
-
-            /*
-               Проверяем существование ника.
-            */
 
             const alreadyExists =
                 Object.values(users)
@@ -794,19 +773,11 @@ app.post(
             }
 
 
-            /*
-               Создаём числовой ID.
-            */
-
             const userId =
                 createPlayerId(
                     users
                 );
 
-
-            /*
-               Хешируем пароль.
-            */
 
             const passwordHash =
                 await bcrypt.hash(
@@ -814,10 +785,6 @@ app.post(
                     12
                 );
 
-
-            /*
-               Создаём пользователя.
-            */
 
             const user = {
 
@@ -856,8 +823,8 @@ app.post(
 
 
             /*
-               Автоматически
-               авторизуем пользователя.
+               Создаём постоянную сессию
+               на 30 дней.
             */
 
             const token =
@@ -890,7 +857,6 @@ app.post(
                 "REGISTER ERROR:",
                 error
             );
-
 
             return res
                 .status(500)
@@ -984,10 +950,6 @@ app.post(
             }
 
 
-            /*
-               Создаём новую сессию.
-            */
-
             const token =
                 createSession(
                     user.id
@@ -1018,7 +980,6 @@ app.post(
                 "LOGIN ERROR:",
                 error
             );
-
 
             return res
                 .status(500)
@@ -1107,27 +1068,13 @@ app.post(
    ПОИСК ИГРОКОВ
 ===================================================== */
 
-/*
-   GET /api/players
-
-   Примеры:
-
-   /api/players
-   /api/players?search=alex
-   /api/players?search=12
-
-   Возвращает:
-
-   ID
-   ник
-   куб
-*/
-
 app.get(
     "/api/players",
     (req, res) => {
 
-        const users = getUsers();
+        const users =
+            getUsers();
+
 
         const search =
             String(
@@ -1136,30 +1083,39 @@ app.get(
                 .trim()
                 .toLowerCase();
 
+
         let players =
             Object.values(users);
+
 
         if (search) {
 
             players =
-                players.filter(user => {
+                players.filter(
+                    user => {
 
-                    const username =
-                        String(
-                            user.username ?? ""
-                        ).toLowerCase();
+                        const id =
+                            String(
+                                user.id
+                            );
 
-                    const id =
-                        String(
-                            user.id ?? ""
+
+                        const username =
+                            String(
+                                user.username ??
+                                ""
+                            )
+                                .toLowerCase();
+
+
+                        return (
+                            id.includes(search) ||
+                            username.includes(search)
                         );
-
-                    return (
-                        username.includes(search) ||
-                        id.includes(search)
-                    );
-                });
+                    }
+                );
         }
+
 
         players.sort(
             (a, b) =>
@@ -1167,27 +1123,39 @@ app.get(
                 Number(b.id)
         );
 
+
         const result =
-            players.map(user => ({
+            players.map(
+                user => ({
 
-                id:
-                    Number(user.id),
+                    id:
+                        Number(
+                            user.id
+                        ),
 
-                username:
-                    user.username,
+                    username:
+                        user.username,
 
-                cubePixels:
-                    user.cubePixels
-            }));
+                    cubePixels:
+                        user.cubePixels ?? null
+                })
+            );
 
-        res.json(result);
+
+        return res.json({
+
+            success:
+                true,
+
+            players:
+                result
+        });
     }
 );
 
 
-
 /* =====================================================
-   ПОЛУЧИТЬ КОНКРЕТНОГО ИГРОКА
+   КОНКРЕТНЫЙ ИГРОК
 ===================================================== */
 
 app.get(
@@ -1251,7 +1219,7 @@ app.get(
                     user.username,
 
                 cubePixels:
-                    user.cubePixels
+                    user.cubePixels ?? null
             }
         });
     }
@@ -1259,7 +1227,7 @@ app.get(
 
 
 /* =====================================================
-   SAVE PROGRESS
+   SAVE LEVEL
 ===================================================== */
 
 app.post(
@@ -1317,24 +1285,22 @@ app.post(
             )
         ) {
 
-            user.completedLevels =
-                [];
+            user.completedLevels = [];
         }
 
 
         if (
-            !user.completedLevels
-                .includes(level)
+            !user.completedLevels.includes(
+                level
+            )
         ) {
 
             user.completedLevels.push(
                 level
             );
 
-
             user.completedLevels.sort(
-                (a, b) =>
-                    a - b
+                (a, b) => a - b
             );
         }
 
@@ -1387,7 +1353,8 @@ io.use(
 
             const cookieHeader =
                 socket.handshake
-                    .headers.cookie;
+                    .headers
+                    .cookie;
 
 
             if (!cookieHeader) {
@@ -1400,8 +1367,7 @@ io.use(
             }
 
 
-            const cookies =
-                {};
+            const cookies = {};
 
 
             cookieHeader
@@ -1410,14 +1376,10 @@ io.use(
                     part => {
 
                         const index =
-                            part.indexOf(
-                                "="
-                            );
+                            part.indexOf("=");
 
 
-                        if (
-                            index === -1
-                        ) {
+                        if (index === -1) {
                             return;
                         }
 
@@ -1459,6 +1421,16 @@ io.use(
                 cookies[
                     SESSION_COOKIE
                 ];
+
+
+            if (!token) {
+
+                return next(
+                    new Error(
+                        "Сессия отсутствует"
+                    )
+                );
+            }
 
 
             const session =
@@ -1521,7 +1493,6 @@ io.use(
                 error
             );
 
-
             next(
                 new Error(
                     "Ошибка авторизации"
@@ -1545,16 +1516,26 @@ io.on(
         );
 
 
-        const users =
-            getUsers();
+        function getCurrentUser() {
+
+            const users =
+                getUsers();
 
 
-        const user =
-            users[
+            return users[
                 String(
                     socket.user.id
                 )
             ];
+        }
+
+
+        /* =================================================
+           AUTH SUCCESS
+        ================================================= */
+
+        const user =
+            getCurrentUser();
 
 
         if (!user) {
@@ -1565,31 +1546,11 @@ io.on(
         }
 
 
-        /* =================================================
-           AUTH SUCCESS
-        ================================================= */
-
         socket.emit(
             "auth:success",
-            {
-
-                id:
-                    Number(
-                        user.id
-                    ),
-
-                username:
-                    user.username,
-
-                level:
-                    user.level,
-
-                completedLevels:
-                    user.completedLevels,
-
-                cubePixels:
-                    user.cubePixels
-            }
+            publicUser(
+                user
+            )
         );
 
 
@@ -1601,16 +1562,8 @@ io.on(
             "profile:get",
             () => {
 
-                const users =
-                    getUsers();
-
-
                 const user =
-                    users[
-                        String(
-                            socket.user.id
-                        )
-                    ];
+                    getCurrentUser();
 
 
                 if (!user) {
@@ -1620,25 +1573,9 @@ io.on(
 
                 socket.emit(
                     "profile",
-                    {
-
-                        id:
-                            Number(
-                                user.id
-                            ),
-
-                        username:
-                            user.username,
-
-                        level:
-                            user.level,
-
-                        completedLevels:
-                            user.completedLevels,
-
-                        cubePixels:
-                            user.cubePixels
-                    }
+                    publicUser(
+                        user
+                    )
                 );
             }
         );
@@ -1652,52 +1589,183 @@ io.on(
             "cube:save",
             data => {
 
-                if (!data) {
-                    return;
-                }
+                try {
+
+                    if (!data) {
+                        return;
+                    }
 
 
-                const pixels =
-                    data.pixels;
+                    const pixels =
+                        data.pixels;
 
 
-                if (
-                    !Array.isArray(
-                        pixels
-                    ) ||
-                    pixels.length !== 8
-                ) {
-
-                    return;
-                }
-
-
-                for (
-                    const row of pixels
-                ) {
+                    /*
+                       Куб должен быть 8x8.
+                    */
 
                     if (
                         !Array.isArray(
-                            row
+                            pixels
                         ) ||
-                        row.length !== 8
+                        pixels.length !== 8
                     ) {
+
+                        console.log(
+                            "cube:save: неправильное количество строк"
+                        );
 
                         return;
                     }
+
+
+                    for (
+                        const row
+                        of pixels
+                    ) {
+
+                        if (
+                            !Array.isArray(
+                                row
+                            ) ||
+                            row.length !== 8
+                        ) {
+
+                            console.log(
+                                "cube:save: неправильный размер строки"
+                            );
+
+                            return;
+                        }
+                    }
+
+
+                    /*
+                       Ограничиваем значения,
+                       чтобы в JSON не попал мусор.
+                    */
+
+                    const cleanPixels =
+                        pixels.map(
+                            row =>
+                                row.map(
+                                    pixel => {
+
+                                        if (
+                                            pixel === null ||
+                                            pixel === undefined
+                                        ) {
+
+                                            return null;
+                                        }
+
+
+                                        if (
+                                            typeof pixel ===
+                                            "string"
+                                        ) {
+
+                                            return pixel
+                                                .substring(
+                                                    0,
+                                                    100
+                                                );
+                                        }
+
+
+                                        return pixel;
+                                    }
+                                )
+                        );
+
+
+                    const users =
+                        getUsers();
+
+
+                    const user =
+                        users[
+                            String(
+                                socket.user.id
+                            )
+                        ];
+
+
+                    if (!user) {
+
+                        socket.emit(
+                            "cube:error",
+                            {
+                                error:
+                                    "Пользователь не найден"
+                            }
+                        );
+
+                        return;
+                    }
+
+
+                    user.cubePixels =
+                        cleanPixels;
+
+
+                    user.updatedAt =
+                        Date.now();
+
+
+                    saveUsers(
+                        users
+                    );
+
+
+                    console.log(
+                        `Куб сохранён: ${user.username} [ID ${user.id}]`
+                    );
+
+
+                    socket.emit(
+                        "cube:saved",
+                        {
+
+                            success:
+                                true,
+
+                            pixels:
+                                user.cubePixels
+                        }
+                    );
+
+
+                } catch (error) {
+
+                    console.error(
+                        "CUBE SAVE ERROR:",
+                        error
+                    );
+
+
+                    socket.emit(
+                        "cube:error",
+                        {
+                            error:
+                                "Ошибка сохранения куба"
+                        }
+                    );
                 }
+            }
+        );
 
 
-                const users =
-                    getUsers();
+        /* =================================================
+           GET CUBE
+        ================================================= */
 
+        socket.on(
+            "cube:get",
+            () => {
 
                 const user =
-                    users[
-                        String(
-                            socket.user.id
-                        )
-                    ];
+                    getCurrentUser();
 
 
                 if (!user) {
@@ -1705,24 +1773,12 @@ io.on(
                 }
 
 
-                user.cubePixels =
-                    pixels;
-
-
-                user.updatedAt =
-                    Date.now();
-
-
-                saveUsers(
-                    users
-                );
-
-
                 socket.emit(
-                    "cube:saved",
+                    "cube:data",
                     {
-                        success:
-                            true
+
+                        pixels:
+                            user.cubePixels ?? null
                     }
                 );
             }
@@ -1742,9 +1798,7 @@ io.on(
 
 
                 if (
-                    !Number.isInteger(
-                        level
-                    ) ||
+                    !Number.isInteger(level) ||
                     level < 1 ||
                     level > 5
                 ) {
@@ -1776,31 +1830,25 @@ io.on(
                     )
                 ) {
 
-                    user.completedLevels =
-                        [];
+                    user.completedLevels = [];
                 }
 
 
                 if (
-                    !user.completedLevels
-                        .includes(level)
+                    !user.completedLevels.includes(
+                        level
+                    )
                 ) {
 
                     user.completedLevels.push(
                         level
                     );
 
-
                     user.completedLevels.sort(
-                        (a, b) =>
-                            a - b
+                        (a, b) => a - b
                     );
                 }
 
-
-                /* =================================================
-                   OPEN NEXT LEVEL
-                ================================================= */
 
                 if (
                     level >= user.level &&
@@ -1865,8 +1913,7 @@ io.on(
 
 
                 if (
-                    message.length >
-                    200
+                    message.length > 200
                 ) {
 
                     message =
@@ -1882,11 +1929,12 @@ io.on(
                     {
 
                         id:
-                            socket.user.id,
+                            Number(
+                                socket.user.id
+                            ),
 
                         username:
-                            socket.user
-                                .username,
+                            socket.user.username,
 
                         message,
 
