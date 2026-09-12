@@ -1078,21 +1078,16 @@ input[type="range"] {
                 type="text"
                 id="playerSearch"
                 placeholder="Поиск по нику или ID..."
-            >
-
-            <button id="playerSearchButton">
-                🔎 Найти
-            </button>
-        </div>
-
-
-        <div class="players-search">
-            <input
-                id="playerSearch"
-                type="text"
-                placeholder="Поиск игрока..."
                 autocomplete="off"
             >
+
+            <button
+                id="playerSearchButton"
+                class="auth-btn"
+                type="button"
+            >
+                Найти
+            </button>
         </div>
 
         <div id="playersList" class="players-list">
@@ -1102,6 +1097,7 @@ input[type="range"] {
         </div>
 
     </div>
+
 
 
 
@@ -1202,33 +1198,6 @@ socket.on("auth:success", user => {
 });
 
 
-socket.on("auth:success", user => {
-    console.log("Socket авторизован:", user.username);
-
-    updateAuthUI(user);
-
-    if (user.cubePixels) {
-        loadSavedCube(user.cubePixels);
-    }
-
-    if (
-        Number.isInteger(user.level) &&
-        user.level >= 1 &&
-        user.level <= 5
-    ) {
-        selectedLevel = user.level;
-
-        document
-            .querySelectorAll(".level-btn")
-            .forEach(button => {
-                button.classList.toggle(
-                    "selected",
-                    Number(button.dataset.level) === selectedLevel
-                );
-            });
-    }
-});
-
 
 /* =====================================================
    PLAYERS SEARCH
@@ -1236,38 +1205,84 @@ socket.on("auth:success", user => {
 
 let allPlayers = [];
 
+const playerSearch =
+    document.getElementById("playerSearch");
+
+const playerSearchButton =
+    document.getElementById("playerSearchButton");
+
+const playersList =
+    document.getElementById("playersList");
+
+
 async function loadPlayers(search = "") {
+
+    playersList.innerHTML = `
+        <div class="players-loading">
+            Загрузка игроков...
+        </div>
+    `;
 
     try {
 
+        const url =
+            "/api/players?search=" +
+            encodeURIComponent(search.trim());
+
         const response =
-            await fetch(
-                "/api/players?search=" +
-                encodeURIComponent(search)
-            );
+            await fetch(url, {
+                method: "GET",
+                credentials: "include",
+                headers: {
+                    "Accept": "application/json"
+                }
+            });
 
         if (!response.ok) {
             throw new Error(
-                "Ошибка загрузки игроков: " +
-                response.status
+                `HTTP ${response.status}`
             );
         }
 
-        allPlayers =
+        const data =
             await response.json();
 
-        renderPlayers();
+        /*
+         * Render/backend может вернуть:
+         *
+         * [
+         *   {...},
+         *   {...}
+         * ]
+         *
+         * либо:
+         *
+         * {
+         *   players: [...]
+         * }
+         */
 
-    } catch (error) {
+        if (Array.isArray(data)) {
+            allPlayers = data;
+        }
+        else if (Array.isArray(data.players)) {
+            allPlayers = data.players;
+        }
+        else {
+            allPlayers = [];
+        }
+
+        renderPlayers(search);
+
+    }
+    catch (error) {
 
         console.error(
             "PLAYERS ERROR:",
             error
         );
 
-        document.getElementById(
-            "playersList"
-        ).innerHTML = `
+        playersList.innerHTML = `
             <div class="players-empty">
                 Не удалось загрузить игроков
             </div>
@@ -1276,43 +1291,41 @@ async function loadPlayers(search = "") {
 }
 
 
+function renderPlayers(search = "") {
 
-function renderPlayers() {
-
-    const list =
-        document.getElementById("playersList");
-
-    const search =
-        document.getElementById("playerSearch")
-            .value
+    const query =
+        String(search || "")
             .trim()
             .toLowerCase();
-
 
     const players =
         allPlayers.filter(player => {
 
             const username =
                 String(
-                    player.username ?? ""
+                    player.username ??
+                    player.name ??
+                    ""
                 ).toLowerCase();
 
             const id =
                 String(
-                    player.id ?? ""
+                    player.id ??
+                    player._id ??
+                    ""
                 ).toLowerCase();
 
             return (
-                username.includes(search) ||
-                id.includes(search)
+                !query ||
+                username.includes(query) ||
+                id.includes(query)
             );
         });
 
 
-
     if (!players.length) {
 
-        list.innerHTML = `
+        playersList.innerHTML = `
             <div class="players-empty">
                 Игроки не найдены
             </div>
@@ -1322,7 +1335,7 @@ function renderPlayers() {
     }
 
 
-    list.innerHTML = "";
+    playersList.innerHTML = "";
 
 
     players.forEach(player => {
@@ -1330,25 +1343,28 @@ function renderPlayers() {
         const card =
             document.createElement("div");
 
-        card.className =
-            "player-card";
+        card.className = "player-card";
 
+
+        /* ID */
 
         const id =
             document.createElement("div");
 
-        id.className =
-            "player-id";
+        id.className = "player-id";
 
         id.textContent =
-            player.id;
+            player.id ??
+            player._id ??
+            "?";
 
+
+        /* CUBE */
 
         const cube =
             document.createElement("div");
 
-        cube.className =
-            "player-cube";
+        cube.className = "player-cube";
 
 
         const pixels =
@@ -1368,22 +1384,32 @@ function renderPlayers() {
                     "player-cube-pixel";
 
 
+                const color =
+                    pixels?.[y]?.[x];
+
+
                 if (
-                    pixels &&
-                    pixels[y] &&
-                    pixels[y][x]
+                    color &&
+                    typeof color === "object"
                 ) {
 
-                    const color =
-                        pixels[y][x];
+                    const r =
+                        Number(color.r) || 0;
+
+                    const g =
+                        Number(color.g) || 0;
+
+                    const b =
+                        Number(color.b) || 0;
+
+                    const a =
+                        color.a == null
+                            ? 1
+                            : Number(color.a);
+
 
                     pixel.style.background =
-                        `rgba(
-                            ${color.r},
-                            ${color.g},
-                            ${color.b},
-                            ${color.a}
-                        )`;
+                        `rgba(${r}, ${g}, ${b}, ${a})`;
                 }
 
 
@@ -1391,6 +1417,8 @@ function renderPlayers() {
             }
         }
 
+
+        /* NAME */
 
         const name =
             document.createElement("div");
@@ -1400,56 +1428,53 @@ function renderPlayers() {
 
 
         const username =
-            String(player.username ?? "");
+            document.createElement("strong");
+
+        username.textContent =
+            player.username ??
+            player.name ??
+            "Unknown";
+
+
+        const playerNumber =
+            document.createElement("span");
+
+        playerNumber.textContent =
+            `Player #${
+                player.id ??
+                player._id ??
+                "?"
+            }`;
 
 
         const rank =
-            String(
-                player.rank ??
-                player.title ??
-                player.role ??
-                player.rankName ??
-                "Без звания"
-            );
+            document.createElement("small");
+
+        rank.textContent =
+            player.rank ??
+            player.title ??
+            player.role ??
+            player.rankName ??
+            "Без звания";
 
 
-        name.innerHTML = `
-            <strong></strong>
-            <span>Player #${player.id}</span>
-            <small></small>
-        `;
-
-
-        name.querySelector("strong")
-            .textContent =
-                username;
-
-
-        name.querySelector("small")
-            .textContent =
-                rank;
+        name.appendChild(username);
+        name.appendChild(playerNumber);
+        name.appendChild(rank);
 
 
         card.appendChild(id);
         card.appendChild(cube);
         card.appendChild(name);
 
-        list.appendChild(card);
+        playersList.appendChild(card);
     });
 }
 
 
-
-const playerSearch =
-    document.getElementById(
-        "playerSearch"
-    );
-
-const playerSearchButton =
-    document.getElementById(
-        "playerSearchButton"
-    );
-
+/* =====================================================
+   ПОИСК
+===================================================== */
 
 playerSearchButton.addEventListener(
     "click",
@@ -1468,6 +1493,8 @@ playerSearch.addEventListener(
 
         if (event.key === "Enter") {
 
+            event.preventDefault();
+
             loadPlayers(
                 playerSearch.value
             );
@@ -1475,7 +1502,39 @@ playerSearch.addEventListener(
     }
 );
 
+
+/*
+ * Поиск при вводе.
+ * Небольшая задержка, чтобы не отправлять
+ * запрос на Render после каждого символа.
+ */
+
+let searchTimer = null;
+
+playerSearch.addEventListener(
+    "input",
+    () => {
+
+        clearTimeout(searchTimer);
+
+        searchTimer =
+            setTimeout(() => {
+
+                loadPlayers(
+                    playerSearch.value
+                );
+
+            }, 300);
+    }
+);
+
+
+/*
+ * Первоначальная загрузка.
+ */
+
 loadPlayers();
+
 
 
 
