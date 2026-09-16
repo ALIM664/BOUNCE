@@ -1896,6 +1896,71 @@ function drawPixelGrid() {
     }
 }
 
+function saveCube() {
+
+    try {
+
+        localStorage.setItem(
+            "bounceCubePixels",
+            JSON.stringify(pixels)
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Ошибка сохранения куба:",
+            error
+        );
+    }
+}
+
+
+function loadCube() {
+
+    try {
+
+        const saved =
+            localStorage.getItem(
+                "bounceCubePixels"
+            );
+
+        if (!saved)
+            return;
+
+        const savedPixels =
+            JSON.parse(saved);
+
+        if (
+            !Array.isArray(savedPixels) ||
+            savedPixels.length !== 8
+        ) {
+            return;
+        }
+
+        for (let y = 0; y < 8; y++) {
+
+            if (
+                !Array.isArray(savedPixels[y]) ||
+                savedPixels[y].length !== 8
+            ) {
+                return;
+            }
+        }
+
+        pixels = savedPixels;
+
+        drawPixelGrid();
+
+    } catch (error) {
+
+        console.error(
+            "Ошибка загрузки куба:",
+            error
+        );
+    }
+}
+
+
 
 function paintPixel(e) {
 
@@ -1951,6 +2016,7 @@ function paintPixel(e) {
     drawPixelGrid();
 
     saveCube();
+
 }
 
 
@@ -4829,6 +4895,9 @@ function gameLoop(currentTime) {
     ctx.restore();
 
     drawWorldPosition();
+
+    loadCube();
+
 
 }
 
