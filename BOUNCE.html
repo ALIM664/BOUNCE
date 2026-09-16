@@ -1091,50 +1091,6 @@ const socket = io({
     withCredentials: true
 });
 
-socket.on("connect_error", error => {
-    console.log(
-        "Socket auth error:",
-        error.message
-    );
-});
-
-socket.on("auth:success", user => {
-
-    console.log(
-        "Socket авторизован:",
-        user.username
-    );
-
-    updateAuthUI(user);
-
-    if (user.cubePixels) {
-        loadSavedCube(user.cubePixels);
-    }
-
-    if (
-        Number.isInteger(user.level) &&
-        user.level >= 1 &&
-        user.level <= 5
-    ) {
-
-        selectedLevel =
-            user.level;
-
-        document
-            .querySelectorAll(".level-btn")
-            .forEach(button => {
-
-                button.classList.toggle(
-                    "selected",
-                    Number(
-                        button.dataset.level
-                    ) === selectedLevel
-                );
-            });
-    }
-});
-
-
 
 /* =====================================================
    PLAYERS SEARCH
@@ -1896,14 +1852,29 @@ function drawPixelGrid() {
     }
 }
 
+/* =====================================================
+   СОХРАНЕНИЕ КУБА
+===================================================== */
+
 function saveCube() {
 
     try {
 
+        const cubePixels =
+            pixels.map(row =>
+                row.map(pixel =>
+                    pixel
+                        ? { ...pixel }
+                        : null
+                )
+            );
+
         localStorage.setItem(
             "bounceCubePixels",
-            JSON.stringify(pixels)
+            JSON.stringify(cubePixels)
         );
+
+        console.log("Куб сохранён");
 
     } catch (error) {
 
@@ -1914,6 +1885,10 @@ function saveCube() {
     }
 }
 
+
+/* =====================================================
+   ЗАГРУЗКА КУБА
+===================================================== */
 
 function loadCube() {
 
@@ -1927,8 +1902,14 @@ function loadCube() {
         if (!saved)
             return;
 
+
         const savedPixels =
             JSON.parse(saved);
+
+
+        /*
+           Проверяем размер.
+        */
 
         if (
             !Array.isArray(savedPixels) ||
@@ -1936,6 +1917,7 @@ function loadCube() {
         ) {
             return;
         }
+
 
         for (let y = 0; y < 8; y++) {
 
@@ -1947,9 +1929,51 @@ function loadCube() {
             }
         }
 
-        pixels = savedPixels;
+
+        /*
+           Копируем данные
+           в существующий массив pixels.
+        */
+
+        for (let y = 0; y < 8; y++) {
+
+            for (let x = 0; x < 8; x++) {
+
+                const pixel =
+                    savedPixels[y][x];
+
+
+                if (
+                    !pixel ||
+                    typeof pixel !== "object"
+                ) {
+
+                    pixels[y][x] = null;
+
+                    continue;
+                }
+
+
+                pixels[y][x] = {
+
+                    r: Number(pixel.r) || 0,
+
+                    g: Number(pixel.g) || 0,
+
+                    b: Number(pixel.b) || 0,
+
+                    a:
+                        pixel.a == null
+                            ? 1
+                            : Number(pixel.a)
+                };
+            }
+        }
+
 
         drawPixelGrid();
+
+        console.log("Куб загружен");
 
     } catch (error) {
 
@@ -1959,6 +1983,7 @@ function loadCube() {
         );
     }
 }
+
 
 
 
@@ -2049,63 +2074,6 @@ window.addEventListener(
     }
 );
 
-/* =====================================================
-   СОХРАНЕНИЕ КУБА
-===================================================== */
-
-function saveCube() {
-
-    if (!socket.connected) {
-
-        console.log(
-            "Куб не сохранён: Socket.IO не подключён"
-        );
-
-        return;
-    }
-
-
-    /*
-       Создаём независимую копию массива,
-       чтобы данные не изменились во время отправки.
-    */
-
-    const cubePixels =
-        pixels.map(row =>
-            row.map(pixel =>
-                pixel
-                    ? { ...pixel }
-                    : null
-            )
-        );
-
-
-    socket.emit(
-        "cube:save",
-        {
-            pixels: cubePixels
-        }
-    );
-}
-
-
-socket.on(
-    "cube:saved",
-    data => {
-
-        if (
-            data &&
-            data.success
-        ) {
-
-            console.log(
-                "Куб успешно сохранён"
-            );
-        }
-    }
-);
-
-
 
 /* =====================================================
    ЗАПОЛНИТЬ
@@ -2137,6 +2105,8 @@ document.getElementById("fillBtn")
 
 
         drawPixelGrid();
+
+        saveCube();
     }
 );
 
@@ -2161,6 +2131,8 @@ document.getElementById("clearBtn")
 
 
         drawPixelGrid();
+
+        saveCube();
     }
 );
 
