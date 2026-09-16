@@ -996,78 +996,15 @@ input[type="range"] {
 
     </div>
 
-    <div class="auth-panel">
+    <input
+        type="text"
+        id="nicknameInput"
+        placeholder="Введите ник"
+        maxlength="16"
+        value="Игрок"
+    >
 
-        <div id="authStatus" class="auth-status">
-            Не авторизован
-        </div>
 
-        <div id="authButtons" class="auth-buttons">
-            <button class="auth-btn" id="createAccountButton">
-                Create account
-            </button>
-
-            <button class="auth-btn" id="loginButton">
-                Login
-            </button>
-        </div>
-
-        <button
-            class="auth-btn logout-btn"
-            id="logoutButton"
-            style="display:none;"
-        >
-            Logout
-        </button>
-
-    </div>
-
-    <div id="authModal" class="auth-modal">
-
-        <div class="auth-window">
-
-            <button
-                class="auth-close"
-                id="authClose"
-            >
-                ×
-            </button>
-
-            <h2 id="authTitle">
-                Login
-            </h2>
-
-            <input
-                id="authUsername"
-                type="text"
-                placeholder="Username"
-                autocomplete="username"
-                maxlength="20"
-            >
-
-            <input
-                id="authPassword"
-                type="password"
-                placeholder="Password"
-                autocomplete="current-password"
-                maxlength="100"
-            >
-
-            <button
-                id="authSubmit"
-                class="auth-submit"
-            >
-                Login
-            </button>
-
-            <div
-                id="authError"
-                class="auth-error"
-            ></div>
-
-        </div>
-
-    </div>
 
     <div class="players-panel">
 
@@ -3678,344 +3615,73 @@ function isColliding(c,b) {
     );
 }
 
-
-function normalizeUsername(username) {
-    return String(username ?? "").trim().toLowerCase();
-}
-
-
-function isValidUsername(username) {
-    return (
-        typeof username === "string" &&
-        username.length > 0
-    );
-}
+/* =====================================================
+   НИК ИГРОКА
+===================================================== */
 
 
-function isValidPassword(password) {
-    return (
-        typeof password === "string" &&
-        password.length > 0
-    );
-}
+function setNickname() {
 
+    const nickname =
+        prompt(
+            "Введите ник:",
+            playerNickname
+        );
 
-function loadSavedCube(savedPixels) {
-
-    if (!Array.isArray(savedPixels))
+    if (nickname === null)
         return;
 
-    if (savedPixels.length !== 8)
-        return;
+    const cleanNickname =
+        nickname.trim().slice(0, 16);
 
-    for (let y = 0; y < 8; y++) {
+    playerNickname =
+        cleanNickname;
 
-        if (!Array.isArray(savedPixels[y]))
-            return;
-
-        if (savedPixels[y].length !== 8)
-            return;
-    }
-
-    for (let y = 0; y < 8; y++) {
-
-        for (let x = 0; x < 8; x++) {
-
-            const color = savedPixels[y][x];
-
-            if (!color) {
-
-                pixels[y][x] = null;
-
-                continue;
-            }
-
-            pixels[y][x] = {
-
-                r: Number(color.r),
-                g: Number(color.g),
-                b: Number(color.b),
-                a: Number(color.a)
-            };
-        }
-    }
-
-    drawPixelGrid();
+    localStorage.setItem(
+        "playerNickname",
+        playerNickname
+    );
 }
-
-
-async function register(username, password) {
-
-    const response =
-        await fetch(
-            "/api/register",
-            {
-                method: "POST",
-
-                headers: {
-                    "Content-Type":
-                        "application/json"
-                },
-
-                body: JSON.stringify({
-
-                    username,
-
-                    password
-                })
-            }
-        );
-
-
-    const data =
-        await response.json();
-
-
-    if (!response.ok) {
-
-        throw new Error(
-            data.error
-        );
-    }
-
-
-    return data;
-}
-
-async function login(username, password) {
-
-    const response =
-        await fetch(
-            "/api/login",
-            {
-                method: "POST",
-
-                headers: {
-                    "Content-Type":
-                        "application/json"
-                },
-
-                body: JSON.stringify({
-
-                    username,
-
-                    password
-                })
-            }
-        );
-
-
-    const data =
-        await response.json();
-
-
-    if (!response.ok) {
-
-        throw new Error(
-            data.error
-        );
-    }
-
-
-    return data;
-}
-
-const createAccountButton =
-    document.getElementById("createAccountButton");
-
-const loginButton =
-    document.getElementById("loginButton");
-
-const logoutButton =
-    document.getElementById("logoutButton");
-
-const authStatus =
-    document.getElementById("authStatus");
-
-const authButtons =
-    document.getElementById("authButtons");
-
-
-function updateAuthUI(user) {
-
-    if (user) {
-
-        authStatus.textContent =
-            "Вы вошли как: " + user.username;
-
-        authButtons.style.display =
-            "none";
-
-        logoutButton.style.display =
-            "block";
-
-    } else {
-
-        authStatus.textContent =
-            "Не авторизован";
-
-        authButtons.style.display =
-            "flex";
-
-        logoutButton.style.display =
-            "none";
-    }
-}
-
-
-createAccountButton.addEventListener(
-    "click",
-    async () => {
-
-        const username =
-            prompt("Введите логин:");
-
-        if (!username)
-            return;
-
-        const password =
-            prompt("Введите пароль:");
-
-        if (!password)
-            return;
-
-        try {
-
-            const data =
-                await register(
-                    username,
-                    password
-                );
-
-            updateAuthUI(
-                data.user
-            );
-
-            alert(
-                "Аккаунт создан!"
-            );
-
-        } catch (error) {
-
-            alert(
-                error.message
-            );
-        }
-    }
-);
-
-
-loginButton.addEventListener(
-    "click",
-    async () => {
-
-        const username =
-            prompt("Введите логин:");
-
-        if (!username)
-            return;
-
-        const password =
-            prompt("Введите пароль:");
-
-        if (!password)
-            return;
-
-        try {
-
-            const data =
-                await login(
-                    username,
-                    password
-                );
-
-            updateAuthUI(
-                data.user
-            );
-
-            alert(
-                "Вы вошли в аккаунт!"
-            );
-
-        } catch (error) {
-
-            alert(
-                error.message
-            );
-        }
-    }
-);
-
-
-logoutButton.addEventListener(
-    "click",
-    async () => {
-
-        await fetch(
-            "/api/logout",
-            {
-                method: "POST"
-            }
-        );
-
-        updateAuthUI(null);
-
-        alert(
-            "Вы вышли из аккаунта."
-        );
-    }
-);
 
 
 /*
-   Проверяем аккаунт
-   при загрузке страницы.
+   Кнопка изменения ника.
 */
 
-async function checkAuth() {
+/* =====================================================
+   НИК ИГРОКА
+===================================================== */
 
-    try {
+const nicknameInput =
+    document.getElementById("nicknameInput");
 
-        const response =
-            await fetch("/api/me");
 
-        if (!response.ok) {
+let playerNickname =
+    localStorage.getItem("playerNickname") ||
+    "Игрок";
 
-            updateAuthUI(null);
 
-            return;
-        }
+nicknameInput.value =
+    playerNickname;
 
-        const data =
-            await response.json();
 
-        if (
-            data.authenticated &&
-            data.user
-        ) {
+nicknameInput.addEventListener(
+    "input",
+    () => {
 
-            updateAuthUI(
-                data.user
-            );
+        playerNickname =
+            nicknameInput.value
+                .trim()
+                .slice(0, 16);
 
-        } else {
-
-            updateAuthUI(null);
-        }
-
-    } catch (error) {
-
-        console.error(
-            "Ошибка проверки аккаунта:",
-            error
+        localStorage.setItem(
+            "playerNickname",
+            playerNickname
         );
-
-        updateAuthUI(null);
     }
-}
+);
 
 
-checkAuth();
 
 
 /* =====================================================
@@ -4808,6 +4474,72 @@ function drawTrail() {
 
 
 /* =====================================================
+   НИК НАД КУБОМ
+===================================================== */
+
+function drawNickname() {
+
+    const x =
+        cube.x -
+        camera.x;
+
+    const y =
+        cube.y -
+        camera.y -
+        cube.size / 2 -
+        15;
+
+
+    ctx.save();
+
+    ctx.font =
+        "bold 16px Arial";
+
+    ctx.textAlign =
+        "center";
+
+    ctx.textBaseline =
+        "middle";
+
+
+    /*
+       Тёмная обводка,
+       чтобы ник был виден
+       на любом фоне.
+    */
+
+    ctx.lineWidth = 5;
+
+    ctx.strokeStyle =
+        "rgba(0, 0, 0, 0.8)";
+
+    ctx.strokeText(
+        playerNickname,
+        x,
+        y
+    );
+
+
+    /*
+       Сам текст.
+    */
+
+    ctx.fillStyle =
+        "#ffffff";
+
+    ctx.fillText(
+        playerNickname,
+        x,
+        y
+    );
+
+
+    ctx.restore();
+}
+
+
+
+/* =====================================================
    ПИКСЕЛЬНЫЙ КУБ
 ===================================================== */
 
@@ -5091,6 +4823,8 @@ function gameLoop(currentTime) {
     drawAim();
 
     drawCube();
+
+    drawNickname();
 
     ctx.restore();
 
