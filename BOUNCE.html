@@ -4035,104 +4035,103 @@ function update() {
                     block.bounce;
             }
         }
-        /*
-           Коллизия с другими игроками.
-        */
 
-        if (playersVisible) {
+    }
+    /*
+       Коллизия с другими игроками.
+    */
+    if (playersVisible) {
+    
+        for (const id in players) {
         
-            for (const id in players) {
-            
-                /*
-                   Себя пропускаем.
-                */
-            
-                if (id === socket.id)
-                    continue;
-            
-            
-                const player =
-                    players[id];
-            
-            
-                if (
-                    !isCollidingWithPlayer(
-                        player
-                    )
+            /*
+               Себя пропускаем.
+            */
+        
+            if (id === socket.id)
+                continue;
+        
+        
+            const player =
+                players[id];
+        
+        
+            if (
+                !isCollidingWithPlayer(
+                    player
                 )
-                    continue;
+            )
+                continue;
+        
+        
+            const dx =
+                cube.x -
+                player.x;
+        
+            const dy =
+                cube.y -
+                player.y;
+        
+        
+            /*
+               Если игроки пересеклись,
+               определяем направление.
+            */
+        
+            if (
+                Math.abs(dx) >
+                Math.abs(dy)
+            ) {
             
-            
-                const dx =
-                    cube.x -
-                    player.x;
-            
-                const dy =
-                    cube.y -
-                    player.y;
-            
-            
-                /*
-                   Если игроки пересеклись,
-                   определяем направление.
-                */
-            
-                if (
-                    Math.abs(dx) >
-                    Math.abs(dy)
-                ) {
+                if (dx < 0) {
                 
-                    if (dx < 0) {
-                    
-                        cube.x =
-                            player.x -
-                            (cube.size +
-                            (player.size ||
-                            cube.size)) / 2;
-                    
-                        cube.vx =
-                            -Math.abs(cube.vx);
-                    
-                    } else {
-                    
-                        cube.x =
-                            player.x +
-                            (cube.size +
-                            (player.size ||
-                            cube.size)) / 2;
-                    
-                        cube.vx =
-                            Math.abs(cube.vx);
-                    }
+                    cube.x =
+                        player.x -
+                        (cube.size +
+                        (player.size ||
+                        cube.size)) / 2;
+                
+                    cube.vx =
+                        -Math.abs(cube.vx);
                 
                 } else {
                 
-                    if (dy < 0) {
-                    
-                        cube.y =
-                            player.y -
-                            (cube.size +
-                            (player.size ||
-                            cube.size)) / 2;
-                    
-                        cube.vy =
-                            -Math.abs(cube.vy);
-                    
-                    } else {
-                    
-                        cube.y =
-                            player.y +
-                            (cube.size +
-                            (player.size ||
-                            cube.size)) / 2;
-                    
-                        cube.vy =
-                            Math.abs(cube.vy);
-                    }
+                    cube.x =
+                        player.x +
+                        (cube.size +
+                        (player.size ||
+                        cube.size)) / 2;
+                
+                    cube.vx =
+                        Math.abs(cube.vx);
+                }
+            
+            } else {
+            
+                if (dy < 0) {
+                
+                    cube.y =
+                        player.y -
+                        (cube.size +
+                        (player.size ||
+                        cube.size)) / 2;
+                
+                    cube.vy =
+                        -Math.abs(cube.vy);
+                
+                } else {
+                
+                    cube.y =
+                        player.y +
+                        (cube.size +
+                        (player.size ||
+                        cube.size)) / 2;
+                
+                    cube.vy =
+                        Math.abs(cube.vy);
                 }
             }
         }
-
     }
 
     updateCamera();
@@ -5247,6 +5246,23 @@ function drawOtherPlayer(player) {
 
     ctx.restore();
 }
+
+function drawOtherPlayers() {
+
+    if (!playersVisible)
+        return;
+
+    for (const id in players) {
+
+        if (id === socket.id)
+            continue;
+
+        drawOtherPlayer(
+            players[id]
+        );
+    }
+}
+
 
 /* =====================================================
    КОЛЛИЗИЯ С ДРУГИМИ ИГРОКАМИ
