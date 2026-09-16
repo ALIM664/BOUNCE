@@ -730,6 +730,22 @@ input[type="range"] {
     color: #707a91;
 }
 
+.players-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    color: white;
+    user-select: none;
+}
+
+.players-toggle input {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+
 
 
 
@@ -940,6 +956,15 @@ input[type="range"] {
 
             <h2>Levels</h2>
 
+            <label class="players-toggle">
+                <input
+                    type="checkbox"
+                    id="playersCollisionToggle"
+                >
+                <span>Видеть игроков и включить коллизию</span>
+            </label>
+
+
             <div class="levels">
 
                 <button
@@ -1090,6 +1115,162 @@ input[type="range"] {
 const socket = io({
     withCredentials: true
 });
+
+socket.on(
+    "players:update",
+    serverPlayers => {
+
+        if (!serverPlayers)
+            return;
+
+
+        /*
+           Если сервер прислал массив.
+        */
+
+        if (Array.isArray(serverPlayers)) {
+
+            for (
+                const player of serverPlayers
+            ) {
+
+                if (!player || !player.id)
+                    continue;
+
+                players[player.id] =
+                    player;
+            }
+
+            return;
+        }
+
+
+        /*
+           Если сервер прислал объект:
+           
+           {
+               id1: {...},
+               id2: {...}
+           }
+        */
+
+        if (
+            typeof serverPlayers ===
+            "object"
+        ) {
+
+            Object.keys(serverPlayers)
+                .forEach(id => {
+
+                    players[id] =
+                        serverPlayers[id];
+
+                });
+        }
+    }
+);
+
+socket.on(
+    "player:left",
+    playerId => {
+
+        delete players[playerId];
+
+    }
+);
+
+
+/* =====================================================
+   ДРУГИЕ ИГРОКИ
+===================================================== */
+
+const playersCollisionToggle =
+    document.getElementById(
+        "playersCollisionToggle"
+    );
+
+
+let playersVisible =
+    playersCollisionToggle?.checked ?? false;
+
+
+/*
+   Здесь храним игроков:
+
+   players[id] = {
+       id,
+       x,
+       y,
+       size,
+       nickname,
+       pixels
+   }
+*/
+
+const players = {};
+
+
+/*
+   Изменение галочки.
+*/
+
+if (playersCollisionToggle) {
+
+    playersCollisionToggle.addEventListener(
+        "change",
+        () => {
+
+            playersVisible =
+                playersCollisionToggle.checked;
+
+        }
+    );
+}
+
+/* =====================================================
+   СИНХРОНИЗАЦИЯ ИГРОКА
+===================================================== */
+
+let lastPlayerSync = 0;
+
+function syncPlayerPosition() {
+
+    if (!socket.connected)
+        return;
+
+    const now = performance.now();
+
+    /*
+       Не отправляем позицию сотни раз в секунду.
+    */
+
+    if (now - lastPlayerSync < 50)
+        return;
+
+    lastPlayerSync = now;
+
+
+    socket.emit(
+        "player:move",
+        {
+            x: cube.x,
+            y: cube.y,
+
+            nickname:
+                playerNickname,
+
+            pixels:
+                pixels.map(row =>
+                    row.map(pixel =>
+                        pixel
+                            ? { ...pixel }
+                            : null
+                    )
+                )
+        }
+    );
+}
+
 
 
 /* =====================================================
@@ -3854,9 +4035,109 @@ function update() {
                     block.bounce;
             }
         }
+        /*
+           Коллизия с другими игроками.
+        */
+
+        if (playersVisible) {
+        
+            for (const id in players) {
+            
+                /*
+                   Себя пропускаем.
+                */
+            
+                if (id === socket.id)
+                    continue;
+            
+            
+                const player =
+                    players[id];
+            
+            
+                if (
+                    !isCollidingWithPlayer(
+                        player
+                    )
+                )
+                    continue;
+            
+            
+                const dx =
+                    cube.x -
+                    player.x;
+            
+                const dy =
+                    cube.y -
+                    player.y;
+            
+            
+                /*
+                   Если игроки пересеклись,
+                   определяем направление.
+                */
+            
+                if (
+                    Math.abs(dx) >
+                    Math.abs(dy)
+                ) {
+                
+                    if (dx < 0) {
+                    
+                        cube.x =
+                            player.x -
+                            (cube.size +
+                            (player.size ||
+                            cube.size)) / 2;
+                    
+                        cube.vx =
+                            -Math.abs(cube.vx);
+                    
+                    } else {
+                    
+                        cube.x =
+                            player.x +
+                            (cube.size +
+                            (player.size ||
+                            cube.size)) / 2;
+                    
+                        cube.vx =
+                            Math.abs(cube.vx);
+                    }
+                
+                } else {
+                
+                    if (dy < 0) {
+                    
+                        cube.y =
+                            player.y -
+                            (cube.size +
+                            (player.size ||
+                            cube.size)) / 2;
+                    
+                        cube.vy =
+                            -Math.abs(cube.vy);
+                    
+                    } else {
+                    
+                        cube.y =
+                            player.y +
+                            (cube.size +
+                            (player.size ||
+                            cube.size)) / 2;
+                    
+                        cube.vy =
+                            Math.abs(cube.vy);
+                    }
+                }
+            }
+        }
+
     }
 
     updateCamera();
+
+    syncPlayerPosition();
 }
 
 
@@ -4734,6 +5015,285 @@ function drawWorldPosition() {
     );
 }
 
+/* =====================================================
+   ДРУГИЕ ИГРОКИ
+===================================================== */
+
+function drawOtherPlayer(player) {
+
+    if (!player)
+        return;
+
+
+    const x =
+        Number(player.x) -
+        camera.x;
+
+    const y =
+        Number(player.y) -
+        camera.y;
+
+
+    const size =
+        Number(player.size) ||
+        cube.size;
+
+
+    const playerPixels =
+        Array.isArray(player.pixels)
+            ? player.pixels
+            : null;
+
+
+    const pixelSize =
+        size / 8;
+
+
+    ctx.save();
+
+
+    /*
+       Если у игрока есть его куб —
+       рисуем его пиксели.
+    */
+
+    if (playerPixels) {
+
+        for (
+            let py = 0;
+            py < 8;
+            py++
+        ) {
+
+            for (
+                let px = 0;
+                px < 8;
+                px++
+            ) {
+
+                const color =
+                    playerPixels?.[py]?.[px];
+
+
+                if (!color)
+                    continue;
+
+
+                const r =
+                    Number(color.r) || 0;
+
+                const g =
+                    Number(color.g) || 0;
+
+                const b =
+                    Number(color.b) || 0;
+
+                const a =
+                    color.a == null
+                        ? 1
+                        : Number(color.a);
+
+
+                ctx.fillStyle =
+                    `rgba(
+                        ${r},
+                        ${g},
+                        ${b},
+                        ${a}
+                    )`;
+
+
+                ctx.shadowBlur =
+                    20 * a;
+
+                ctx.shadowColor =
+                    `rgba(
+                        ${r},
+                        ${g},
+                        ${b},
+                        ${a}
+                    )`;
+
+
+                ctx.fillRect(
+
+                    x -
+                    size / 2 +
+                    px * pixelSize,
+
+                    y -
+                    size / 2 +
+                    py * pixelSize,
+
+                    pixelSize + 0.5,
+
+                    pixelSize + 0.5
+                );
+            }
+        }
+    }
+
+
+    /*
+       Пустые клетки.
+    */
+
+    ctx.shadowBlur = 0;
+
+    ctx.fillStyle =
+        "rgba(255,255,255,.04)";
+
+
+    if (playerPixels) {
+
+        for (
+            let py = 0;
+            py < 8;
+            py++
+        ) {
+
+            for (
+                let px = 0;
+                px < 8;
+                px++
+            ) {
+
+                if (
+                    playerPixels?.[py]?.[px]
+                )
+                    continue;
+
+
+                ctx.fillRect(
+
+                    x -
+                    size / 2 +
+                    px * pixelSize,
+
+                    y -
+                    size / 2 +
+                    py * pixelSize,
+
+                    pixelSize,
+
+                    pixelSize
+                );
+            }
+        }
+    }
+
+
+    /*
+       Ник.
+    */
+
+    ctx.font =
+        "bold 14px Arial";
+
+    ctx.textAlign =
+        "center";
+
+    ctx.textBaseline =
+        "middle";
+
+    const nickname =
+        player.nickname ||
+        player.username ||
+        "Игрок";
+
+
+    ctx.lineWidth = 4;
+
+    ctx.strokeStyle =
+        "rgba(0,0,0,.85)";
+
+    ctx.strokeText(
+        nickname,
+        x,
+        y - size / 2 - 14
+    );
+
+
+    ctx.fillStyle =
+        "#ffffff";
+
+    ctx.fillText(
+        nickname,
+        x,
+        y - size / 2 - 14
+    );
+
+
+    /*
+       Если включена коллизия —
+       показываем рамку.
+    */
+
+    if (playersVisible) {
+
+        ctx.strokeStyle =
+            "rgba(255,255,255,.25)";
+
+        ctx.lineWidth = 1;
+
+        ctx.strokeRect(
+            x - size / 2,
+            y - size / 2,
+            size,
+            size
+        );
+    }
+
+
+    ctx.restore();
+}
+
+/* =====================================================
+   КОЛЛИЗИЯ С ДРУГИМИ ИГРОКАМИ
+===================================================== */
+
+function isCollidingWithPlayer(
+    player
+) {
+
+    if (!playersVisible)
+        return false;
+
+
+    if (!player)
+        return false;
+
+
+    const playerSize =
+        Number(player.size) ||
+        cube.size;
+
+
+    const halfCube =
+        cube.size / 2;
+
+    const halfPlayer =
+        playerSize / 2;
+
+
+    return (
+
+        cube.x + halfCube >
+        player.x - halfPlayer &&
+
+        cube.x - halfCube <
+        player.x + halfPlayer &&
+
+        cube.y + halfCube >
+        player.y - halfPlayer &&
+
+        cube.y - halfCube <
+        player.y + halfPlayer
+
+    );
+}
+
+
 
 /* =====================================================
    RESET
@@ -4857,6 +5417,8 @@ function gameLoop(currentTime) {
     drawTrail();
 
     drawBlocks();
+
+    drawOtherPlayers();
 
     drawAim();
 
