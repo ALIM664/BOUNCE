@@ -3538,9 +3538,9 @@ function getWorldPointerPosition(e) {
 
 function isCubeOnBlock() {
 
-    const half =
-        cube.size / 2;
+    const half = cube.size / 2;
 
+    // Обычные блоки
     for (const block of blocks) {
 
         if (block.spikes || block.finish)
@@ -3557,16 +3557,67 @@ function isCubeOnBlock() {
                 block.y
             ) <= 8;
 
-        if (
-            horizontal &&
-            onTop
-        ) {
+        if (horizontal && onTop) {
             return true;
+        }
+    }
+
+
+    // Другие игроки
+    if (playersVisible) {
+
+        for (const id in players) {
+
+            // Самого себя пропускаем
+            if (id === socket.id)
+                continue;
+
+            const player = players[id];
+
+            if (!player)
+                continue;
+
+            const playerSize =
+                Number(player.size) ||
+                cube.size;
+
+            const playerHalf =
+                playerSize / 2;
+
+
+            const horizontal =
+                cube.x + half >
+                    Number(player.x) - playerHalf &&
+
+                cube.x - half <
+                    Number(player.x) + playerHalf;
+
+
+            /*
+               Нижняя часть нашего куба
+               должна находиться около
+               верхней части другого игрока.
+            */
+
+            const onTop =
+                Math.abs(
+                    (cube.y + half) -
+                    (Number(player.y) - playerHalf)
+                ) <= 8;
+
+
+            if (
+                horizontal &&
+                onTop
+            ) {
+                return true;
+            }
         }
     }
 
     return false;
 }
+
 
 
 /*
