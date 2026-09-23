@@ -3620,6 +3620,11 @@ function isCubeOnBlock() {
 
 
 
+
+/* =====================================================
+   СТОЛКНОВЕНИЕ С ДРУГИМ ИГРОКОМ
+===================================================== */
+
 function resolvePlayerCollision(player) {
 
     if (!player)
@@ -3634,11 +3639,6 @@ function resolvePlayerCollision(player) {
     const halfPlayer =
         playerSize / 2;
 
-    /*
-       Направление от второго игрока
-       к нашему кубу.
-    */
-
     let dx =
         cube.x -
         Number(player.x);
@@ -3648,31 +3648,33 @@ function resolvePlayerCollision(player) {
         Number(player.y);
 
     let distance =
-        Math.sqrt(dx * dx + dy * dy);
-
-
-    /*
-       Если центры практически совпали,
-       используем направление текущей скорости.
-    */
+        Math.sqrt(
+            dx * dx +
+            dy * dy
+        );
 
     if (distance < 0.001) {
 
-        dx = cube.vx;
-        dy = cube.vy;
+        dx =
+            cube.vx -
+            (Number(player.vx) || 0);
+
+        dy =
+            cube.vy -
+            (Number(player.vy) || 0);
 
         distance =
-            Math.sqrt(dx * dx + dy * dy);
+            Math.sqrt(
+                dx * dx +
+                dy * dy
+            );
 
         if (distance < 0.001) {
-
             dx = 1;
             dy = 0;
-
             distance = 1;
         }
     }
-
 
     const nx =
         dx / distance;
@@ -3680,23 +3682,11 @@ function resolvePlayerCollision(player) {
     const ny =
         dy / distance;
 
-
-    /*
-       Скорость нашего игрока.
-    */
-
     const speed1 =
         Math.sqrt(
             cube.vx * cube.vx +
             cube.vy * cube.vy
         );
-
-
-    /*
-       Скорость второго игрока.
-       Сервер должен передавать vx/vy
-       вместе с данными игрока.
-    */
 
     const playerVx =
         Number(player.vx) || 0;
@@ -3704,104 +3694,188 @@ function resolvePlayerCollision(player) {
     const playerVy =
         Number(player.vy) || 0;
 
-
     const speed2 =
         Math.sqrt(
             playerVx * playerVx +
             playerVy * playerVy
         );
 
-
-    /*
-       Средняя скорость.
-    */
-
     const sharedSpeed =
         (speed1 + speed2) / 2;
 
-
-    /*
-       Наш игрок отскакивает от второго.
-    */
-
+    // Наш импульс
     cube.vx =
         nx * sharedSpeed;
 
     cube.vy =
         ny * sharedSpeed;
 
-
-    /*
-       Второму игроку задаём
-       противоположное направление.
-    */
-
+    // Локально показываем противоположный импульс
     player.vx =
         -nx * sharedSpeed;
 
     player.vy =
         -ny * sharedSpeed;
 
-
-    /*
-       Раздвигаем игроков, чтобы они
-       не оставались внутри друг друга.
-    */
-
     const minDistance =
-        halfCube + halfPlayer;
+        halfCube +
+        halfPlayer;
 
     const overlap =
-        minDistance - distance;
-
+        minDistance -
+        distance;
 
     if (overlap > 0) {
 
         const push =
             overlap / 2 + 0.5;
 
-
         cube.x +=
             nx * push;
 
         cube.y +=
             ny * push;
+    }
+
+    /*
+       Передаём серверу только наше новое состояние.
+       Сервер должен сам применить противоположный
+       импульс второму игроку.
+    */
+
+    syncPlayerPosition();
+}
 
 
-        player.x =
-            Number(player.x) -
-            nx * push;
 
-        player.y =
-            Number(player.y) -
-            ny * push;
+/* =====================================================
+   ПРОВЕРКА СТОЛКНОВЕНИЯ
+===================================================== */
+
+function isCollidingWithPlayer(
+    player
+) {
+
+    if (!playersVisible)
+        return false;
+
+    if (!player)
+        return false;
+
+
+    const playerSize =
+        Number(player.size) ||
+        cube.size;
+
+
+    const halfCube =
+        cube.size / 2;
+
+    const halfPlayer =
+        playerSize / 2;
+
+
+    return (
+
+        cube.x + halfCube >
+        Number(player.x) - halfPlayer &&
+
+        cube.x - halfCube <
+        Number(player.x) + halfPlayer &&
+
+        cube.y + halfCube >
+        Number(player.y) - halfPlayer &&
+
+        cube.y - halfCube <
+        Number(player.y) + halfPlayer
+    );
+}
+
+
+/* =====================================================
+   ПРОВЕРКА ВСЕХ ИГРОКОВ
+===================================================== */
+
+function checkPlayerCollisions() {
+
+    if (!playersVisible)
+        return;
+
+    for (const id in players) {
+
+        if (id === socket.id)
+            continue;
+
+        const player = players[id];
+
+        if (!player)
+            continue;
+
+        if (!isCollidingWithPlayer(player))
+            continue;
+
+        if (playerCollisionCooldown[id])
+            continue;
+
+        playerCollisionCooldown[id] = true;
+
+        resolvePlayerCollision(player);
+
+        setTimeout(() => {
+            delete playerCollisionCooldown[id];
+        }, 100);
     }
 }
+
+
+
+/* =====================================================
+   СИНХРОНИЗАЦИЯ ПОЗИЦИИ
+===================================================== */
 
 function syncPlayerPosition() {
 
     if (!socket)
         return;
 
+
     socket.emit(
         "player:move",
         {
-            x: cube.x,
-            y: cube.y,
 
-            vx: cube.vx,
-            vy: cube.vy,
+            x:
+                cube.x,
 
-            size: cube.size,
+            y:
+                cube.y,
+
+
+            /*
+               Очень важно:
+               отправляем скорость.
+            */
+
+            vx:
+                cube.vx,
+
+            vy:
+                cube.vy,
+
+
+            size:
+                cube.size,
+
 
             nickname:
                 playerNickname,
+
 
             pixels:
                 pixels
         }
     );
 }
+
 
 
 
@@ -4277,9 +4351,13 @@ function update() {
     }
 
 
+    // Столкновения с другими игроками
+    checkPlayerCollisions();
+
     updateCamera();
 
     syncPlayerPosition();
+
 }
 
 
