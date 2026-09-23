@@ -171,35 +171,25 @@ function sanitizePixels(pixels) {
    P2 = 50
 */
 
+/* =====================================================
+   КОЛЛИЗИИ ИГРОКОВ
+===================================================== */
+
 function resolvePlayerCollisions() {
 
     const list =
         Object.values(players);
 
+    for (let i = 0; i < list.length; i++) {
 
-    for (
-        let i = 0;
-        i < list.length;
-        i++
-    ) {
-
-        for (
-            let j = i + 1;
-            j < list.length;
-            j++
-        ) {
+        for (let j = i + 1; j < list.length; j++) {
 
             const p1 = list[i];
             const p2 = list[j];
 
-
             if (!p1 || !p2)
                 continue;
 
-
-            /* =================================================
-               РАЗМЕРЫ
-            ================================================= */
 
             const size1 =
                 Number(p1.size) || 64;
@@ -215,20 +205,16 @@ function resolvePlayerCollisions() {
                 size2 / 2;
 
 
-            /* =================================================
-               РАССТОЯНИЕ
-            ================================================= */
-
-            const dx =
+            let dx =
                 Number(p1.x) -
                 Number(p2.x);
 
-            const dy =
+            let dy =
                 Number(p1.y) -
                 Number(p2.y);
 
 
-            const distance =
+            let distance =
                 Math.sqrt(
                     dx * dx +
                     dy * dy
@@ -240,48 +226,26 @@ function resolvePlayerCollisions() {
 
 
             /*
-               Не пересекаются.
+               Игроки не соприкасаются.
             */
 
-            if (
-                distance >=
-                minDistance
-            ) {
+            if (distance >= minDistance)
                 continue;
-            }
 
 
-            /* =================================================
-               НОРМАЛЬ СТОЛКНОВЕНИЯ
-            ================================================= */
+            /*
+               Нормаль столкновения.
+            */
 
-            let nx;
-            let ny;
-
-
-            if (distance > 0.001) {
-
-                nx =
-                    dx / distance;
-
-                ny =
-                    dy / distance;
-
-            } else {
-
-                /*
-                   Центры полностью совпали.
-
-                   Используем относительную скорость.
-                */
+            if (distance < 0.001) {
 
                 const rvx =
-                    Number(p1.vx) -
-                    Number(p2.vx);
+                    (Number(p1.vx) || 0) -
+                    (Number(p2.vx) || 0);
 
                 const rvy =
-                    Number(p1.vy) -
-                    Number(p2.vy);
+                    (Number(p1.vy) || 0) -
+                    (Number(p2.vy) || 0);
 
 
                 const relativeSpeed =
@@ -291,177 +255,71 @@ function resolvePlayerCollisions() {
                     );
 
 
-                if (
-                    relativeSpeed > 0.001
-                ) {
+                if (relativeSpeed > 0.001) {
 
-                    nx =
-                        rvx /
-                        relativeSpeed;
+                    dx =
+                        rvx / relativeSpeed;
 
-                    ny =
-                        rvy /
-                        relativeSpeed;
+                    dy =
+                        rvy / relativeSpeed;
 
                 } else {
 
-                    /*
-                       Оба стоят в одной точке.
-                    */
-
-                    nx = 1;
-                    ny = 0;
+                    dx = 1;
+                    dy = 0;
                 }
+
+            } else {
+
+                dx /= distance;
+                dy /= distance;
             }
 
 
-            /* =================================================
-               СКОРОСТИ
-            ================================================= */
+            const nx = dx;
+            const ny = dy;
 
-            const p1vx =
+
+            /*
+               Скорости.
+            */
+
+            const v1x =
                 Number(p1.vx) || 0;
 
-            const p1vy =
+            const v1y =
                 Number(p1.vy) || 0;
 
-            const p2vx =
+            const v2x =
                 Number(p2.vx) || 0;
 
-            const p2vy =
+            const v2y =
                 Number(p2.vy) || 0;
 
 
-            const speed1 =
-                Math.sqrt(
-                    p1vx * p1vx +
-                    p1vy * p1vy
-                );
-
-
-            const speed2 =
-                Math.sqrt(
-                    p2vx * p2vx +
-                    p2vy * p2vy
-                );
-
-
-            /* =================================================
-               ПРОВЕРКА НАПРАВЛЕНИЯ
-            ================================================= */
-
             /*
-               Относительная скорость вдоль нормали.
+               Относительная скорость
+               вдоль нормали.
 
-               Если игроки уже разлетаются,
-               повторно не отскакиваем.
+               > 0 = приближаются.
+               <= 0 = уже разлетаются.
             */
 
-            const relativeNormalSpeed =
-                (
-                    p1vx - p2vx
-                ) * nx +
-                (
-                    p1vy - p2vy
-                ) * ny;
+            const relativeNormalVelocity =
+                (v1x - v2x) * nx +
+                (v1y - v2y) * ny;
 
 
             /*
-               Если они уже удаляются друг от друга,
-               просто оставляем их раздвигаться.
+               Сначала обязательно
+               раздвигаем игроков.
             */
-
-            if (
-                relativeNormalSpeed <= 0
-            ) {
-
-                /*
-                   Но обязательно раздвигаем,
-                   если они пересекаются.
-                */
-
-                const overlap =
-                    minDistance -
-                    distance;
-
-
-                if (overlap > 0) {
-
-                    const push =
-                        overlap / 2 + 0.5;
-
-
-                    p1.x +=
-                        nx * push;
-
-                    p1.y +=
-                        ny * push;
-
-
-                    p2.x -=
-                        nx * push;
-
-                    p2.y -=
-                        ny * push;
-                }
-
-                continue;
-            }
-
-
-            /* =================================================
-               СРЕДНЯЯ СКОРОСТЬ
-            ================================================= */
-
-            const sharedSpeed =
-                (
-                    speed1 +
-                    speed2
-                ) / 2;
-
-
-            /* =================================================
-               ОТСКОК P1
-            ================================================= */
-
-            p1.vx =
-                nx *
-                sharedSpeed;
-
-            p1.vy =
-                ny *
-                sharedSpeed;
-
-
-            /* =================================================
-               ОТСКОК P2
-            ================================================= */
-
-            p2.vx =
-                -nx *
-                sharedSpeed;
-
-            p2.vy =
-                -ny *
-                sharedSpeed;
-
-
-            /* =================================================
-               РАЗДВИГАЕМ ИГРОКОВ
-            ================================================= */
 
             const overlap =
-                minDistance -
-                distance;
+                minDistance - distance;
 
 
             if (overlap > 0) {
-
-                /*
-                   Небольшой запас,
-                   чтобы они не застряли
-                   друг в друге.
-                */
 
                 const push =
                     overlap / 2 + 0.5;
@@ -480,9 +338,141 @@ function resolvePlayerCollisions() {
                 p2.y -=
                     ny * push;
             }
+
+
+            /*
+               Если игроки уже разлетаются,
+               второй раз не отскакиваем.
+            */
+
+            if (
+                relativeNormalVelocity <= 0
+            ) {
+                continue;
+            }
+
+
+            /*
+               СКОРОСТЬ ПОСЛЕ СТОЛКНОВЕНИЯ.
+
+               Используем обычный упругий
+               обмен скоростью вдоль нормали.
+
+               Касательная скорость сохраняется.
+            */
+
+            const impulse =
+                relativeNormalVelocity;
+
+
+            p1.vx =
+                v1x -
+                impulse * nx;
+
+            p1.vy =
+                v1y -
+                impulse * ny;
+
+
+            p2.vx =
+                v2x +
+                impulse * nx;
+
+            p2.vy =
+                v2y +
+                impulse * ny;
+
+
+            /*
+               Ограничение скорости.
+            */
+
+            const MAX_PLAYER_SPEED = 500;
+
+
+            const speed1 =
+                Math.sqrt(
+                    p1.vx * p1.vx +
+                    p1.vy * p1.vy
+                );
+
+
+            const speed2 =
+                Math.sqrt(
+                    p2.vx * p2.vx +
+                    p2.vy * p2.vy
+                );
+
+
+            if (
+                speed1 > MAX_PLAYER_SPEED
+            ) {
+
+                p1.vx =
+                    p1.vx /
+                    speed1 *
+                    MAX_PLAYER_SPEED;
+
+                p1.vy =
+                    p1.vy /
+                    speed1 *
+                    MAX_PLAYER_SPEED;
+            }
+
+
+            if (
+                speed2 > MAX_PLAYER_SPEED
+            ) {
+
+                p2.vx =
+                    p2.vx /
+                    speed2 *
+                    MAX_PLAYER_SPEED;
+
+                p2.vy =
+                    p2.vy /
+                    speed2 *
+                    MAX_PLAYER_SPEED;
+            }
         }
     }
 }
+
+/* =====================================================
+   СЕРВЕРНАЯ ФИЗИКА
+===================================================== */
+
+const SERVER_DT = 1 / 60;
+
+setInterval(() => {
+
+    const list =
+        Object.values(players);
+
+
+    /*
+       Проверяем столкновения.
+    */
+
+    resolvePlayerCollisions();
+
+
+    /*
+       Рассылаем состояние только если
+       есть игроки.
+    */
+
+    if (list.length > 0) {
+
+        io.emit(
+            "players:update",
+            players
+        );
+    }
+
+}, 1000 / 60);
+
+
 
 
 /* =====================================================
@@ -753,23 +743,6 @@ io.on(
                             )
                         );
                 }
-
-
-                /* =================================================
-                   КОЛЛИЗИИ
-                ================================================= */
-
-                resolvePlayerCollisions();
-
-
-                /* =================================================
-                   ОТПРАВЛЯЕМ СОСТОЯНИЕ
-                ================================================= */
-
-                io.emit(
-                    "players:update",
-                    players
-                );
             }
         );
 
