@@ -141,176 +141,6 @@ return result;
 }
 
 /* =====================================================
-   ОТСКОК ИГРОКОВ
-===================================================== */
-
-function resolvePlayerCollisions() {
-
-    const list = Object.values(players);
-
-    for (let i = 0; i < list.length; i++) {
-
-        for (let j = i + 1; j < list.length; j++) {
-
-            const p1 = list[i];
-            const p2 = list[j];
-
-            const dx = p2.x - p1.x;
-            const dy = p2.y - p1.y;
-
-            let distance =
-                Math.sqrt(dx * dx + dy * dy);
-
-            const radius1 = p1.size / 2;
-            const radius2 = p2.size / 2;
-
-            const minDistance =
-                radius1 + radius2;
-
-            /*
-               Если расстояние больше суммы радиусов —
-               столкновения нет.
-            */
-
-            if (distance >= minDistance)
-                continue;
-
-
-            /*
-               Если игроки находятся точно
-               в одной точке — создаём направление.
-            */
-
-            let nx;
-            let ny;
-
-            if (distance < 0.0001) {
-
-                nx = 1;
-                ny = 0;
-
-                distance = 0.0001;
-
-            } else {
-
-                nx = dx / distance;
-                ny = dy / distance;
-            }
-
-
-            /*
-               Сила/скорость каждого игрока.
-            */
-
-            const speed1 =
-                Math.sqrt(
-                    p1.vx * p1.vx +
-                    p1.vy * p1.vy
-                );
-
-            const speed2 =
-                Math.sqrt(
-                    p2.vx * p2.vx +
-                    p2.vy * p2.vy
-                );
-
-
-            /*
-               ТРЕБУЕМАЯ ФОРМУЛА:
-
-               (скорость P1 + скорость P2) / 2
-            */
-
-            const bounceSpeed =
-                (speed1 + speed2) / 2;
-
-
-            /*
-               Если оба стоят,
-               отскок не создаём.
-            */
-
-            if (bounceSpeed > 0) {
-
-                /*
-                   P1 получает направление от P2.
-                   P2 — противоположное.
-                */
-
-                p1.vx =
-                    -nx * bounceSpeed;
-
-                p1.vy =
-                    -ny * bounceSpeed;
-
-
-                p2.vx =
-                    nx * bounceSpeed;
-
-                p2.vy =
-                    ny * bounceSpeed;
-            }
-
-
-            /*
-               Раздвигаем игроков,
-               чтобы они не оставались внутри друг друга.
-            */
-
-            const overlap =
-                minDistance - distance;
-
-            const separation =
-                overlap / 2 + 0.5;
-
-
-            p1.x -=
-                nx * separation;
-
-            p1.y -=
-                ny * separation;
-
-
-            p2.x +=
-                nx * separation;
-
-            p2.y +=
-                ny * separation;
-
-
-            /*
-               Ограничиваем координаты.
-            */
-
-            p1.x =
-                Math.max(
-                    -100000,
-                    Math.min(100000, p1.x)
-                );
-
-            p1.y =
-                Math.max(
-                    -100000,
-                    Math.min(100000, p1.y)
-                );
-
-            p2.x =
-                Math.max(
-                    -100000,
-                    Math.min(100000, p2.x)
-                );
-
-            p2.y =
-                Math.max(
-                    -100000,
-                    Math.min(100000, p2.y)
-                );
-        }
-    }
-}
-
-
-/* =====================================================
 SOCKET.IO
 ===================================================== */
 
@@ -330,10 +160,8 @@ players[socket.id] = {
     id: socket.id,
 
     x: 200,
-    y: 250,
 
-    vx: 0,
-    vy: 0,
+    y: 250,
 
     size: 64,
 
@@ -341,7 +169,6 @@ players[socket.id] = {
 
     pixels: null
 };
-
 
 
 /*
@@ -473,41 +300,6 @@ socket.on(
                 );
         }
 
-        /*
-           Скорость.
-        */
-
-        const vx =
-            Number(data.vx);
-
-        const vy =
-            Number(data.vy);
-
-        if (
-            Number.isFinite(vx) &&
-            Number.isFinite(vy)
-        ) {
-        
-            players[socket.id].vx =
-                Math.max(
-                    -100,
-                    Math.min(
-                        100,
-                        vx
-                    )
-                );
-            
-            players[socket.id].vy =
-                Math.max(
-                    -100,
-                    Math.min(
-                        100,
-                        vy
-                    )
-                );
-        }
-
-
 
         /*
            Ник.
@@ -571,8 +363,6 @@ socket.on(
            Отправляем всем
            актуальное состояние.
         */
-
-        resolvePlayerCollisions();
 
         io.emit(
             "players:update",
