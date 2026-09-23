@@ -3660,186 +3660,193 @@ function isCollidingWithPlayer(player) {
 }
 
 
-function resolvePlayerCollision(player, id) {
+/* =====================================================
+   КОЛЛИЗИЯ С ДРУГИМ ИГРОКОМ
+===================================================== */
+
+function resolvePlayerCollision(player) {
 
     if (!player)
         return;
 
-    /*
-       Не обрабатываем одно и то же
-       столкновение несколько раз подряд.
-    */
-
-    if (playerCollisionCooldown[id])
-        return;
-
-    playerCollisionCooldown[id] = true;
-
-    setTimeout(() => {
-        delete playerCollisionCooldown[id];
-    }, 150);
-
+    const playerX = Number(player.x);
+    const playerY = Number(player.y);
 
     const playerSize =
         Number(player.size) || cube.size;
 
-    const halfCube =
-        cube.size / 2;
+    const half1 = cube.size / 2;
+    const half2 = playerSize / 2;
 
-    const halfPlayer =
-        playerSize / 2;
+    const dx =
+        cube.x - playerX;
 
+    const dy =
+        cube.y - playerY;
 
-    /*
-       Направление от второго игрока
-       к нашему игроку.
-    */
+    const distance =
+        Math.sqrt(dx * dx + dy * dy);
 
-    let dx =
-        cube.x -
-        Number(player.x);
+    const minDistance =
+        half1 + half2;
 
-    let dy =
-        cube.y -
-        Number(player.y);
-
-
-    let distance =
-        Math.sqrt(
-            dx * dx +
-            dy * dy
-        );
+    if (distance >= minDistance)
+        return;
 
 
     /*
-       Если центры почти совпали,
-       используем направление скорости.
+       Нормаль столкновения.
     */
 
-    if (distance < 0.001) {
+    let nx;
+    let ny;
 
-        dx =
+    if (distance > 0.001) {
+
+        nx = dx / distance;
+        ny = dy / distance;
+
+    } else {
+
+        /*
+           Если центры совпали,
+           используем направление движения.
+        */
+
+        const rvx =
             cube.vx -
             (Number(player.vx) || 0);
 
-        dy =
+        const rvy =
             cube.vy -
             (Number(player.vy) || 0);
 
-        distance =
+        const relativeSpeed =
             Math.sqrt(
-                dx * dx +
-                dy * dy
+                rvx * rvx +
+                rvy * rvy
             );
 
+        if (relativeSpeed > 0.001) {
 
-        if (distance < 0.001) {
+            nx =
+                rvx / relativeSpeed;
 
-            dx = 1;
-            dy = 0;
+            ny =
+                rvy / relativeSpeed;
 
-            distance = 1;
+        } else {
+
+            nx = 1;
+            ny = 0;
         }
     }
 
 
-    const nx =
-        dx / distance;
+    /*
+       Относительная скорость.
+    */
 
-    const ny =
-        dy / distance;
+    const playerVx =
+        Number(player.vx) || 0;
+
+    const playerVy =
+        Number(player.vy) || 0;
+
+
+    const relativeVx =
+        cube.vx - playerVx;
+
+    const relativeVy =
+        cube.vy - playerVy;
+
+
+    const relativeNormalSpeed =
+        relativeVx * nx +
+        relativeVy * ny;
 
 
     /*
-       Скорость нашего игрока.
+       Если игроки уже разлетаются,
+       повторный отскок не нужен.
+
+       Но пересечение всё равно исправляем.
     */
 
-    const speed1 =
-        Math.sqrt(
-            cube.vx * cube.vx +
-            cube.vy * cube.vy
-        );
+    if (relativeNormalSpeed > 0) {
+
+        const speed1 =
+            Math.sqrt(
+                cube.vx * cube.vx +
+                cube.vy * cube.vy
+            );
+
+        const speed2 =
+            Math.sqrt(
+                playerVx * playerVx +
+                playerVy * playerVy
+            );
+
+
+        const sharedSpeed =
+            (speed1 + speed2) / 2;
+
+
+        /*
+           Наш игрок.
+        */
+
+        cube.vx =
+            nx * sharedSpeed;
+
+        cube.vy =
+            ny * sharedSpeed;
+    }
 
 
     /*
-       Скорость второго игрока.
+       ВСЕГДА раздвигаем игроков.
     */
-
-    const speed2 =
-        Math.sqrt(
-            (Number(player.vx) || 0) *
-            (Number(player.vx) || 0) +
-
-            (Number(player.vy) || 0) *
-            (Number(player.vy) || 0)
-        );
-
-
-    /*
-       Не используем среднюю скорость.
-       Это часто приводит к странным
-       скачкам при повторных столкновениях.
-
-       Берём относительную скорость.
-    */
-
-    const relativeSpeed =
-        Math.max(
-            30,
-            Math.min(
-                MAX_SPEED,
-                speed1 + speed2
-            )
-        );
-
-
-    /*
-       Отбрасываем нашего игрока.
-    */
-
-    cube.vx =
-        nx * relativeSpeed;
-
-    cube.vy =
-        ny * relativeSpeed;
-
-
-    /*
-       Раздвигаем игроков.
-
-       ВАЖНО:
-       второй игрок здесь НЕ изменяется.
-       Его состояние должен менять сервер.
-    */
-
-    const minDistance =
-        halfCube +
-        halfPlayer;
-
 
     const overlap =
-        minDistance -
-        distance;
+        minDistance - distance;
 
 
     if (overlap > 0) {
 
-        /*
-           Выносим только нашего игрока
-           наружу из второго.
-        */
-
         const push =
-            overlap + 1;
+            overlap / 2 + 1;
+
 
         cube.x +=
             nx * push;
 
         cube.y +=
             ny * push;
+
+
+        /*
+           ВАЖНО:
+
+           Не меняем здесь player.x/player.y.
+
+           player — это только клиентская
+           копия другого игрока.
+        */
     }
+
+
+    /*
+       Отправляем своё новое состояние.
+    */
+
+    syncPlayerPosition();
 }
 
+
+/* =====================================================
+   ПРОВЕРКА ВСЕХ ИГРОКОВ
+===================================================== */
 
 function checkPlayerCollisions() {
 
@@ -3856,26 +3863,23 @@ function checkPlayerCollisions() {
         const player =
             players[id];
 
-
         if (!player)
             continue;
 
 
         if (
-            !isCollidingWithPlayer(
+            isCollidingWithPlayer(
                 player
             )
         ) {
-            continue;
+
+            resolvePlayerCollision(
+                player
+            );
         }
-
-
-        resolvePlayerCollision(
-            player,
-            id
-        );
     }
 }
+
 
 
 
@@ -4403,6 +4407,9 @@ function update() {
 
 
     // Столкновения с другими игроками
+    
+    checkPlayerCollisions();
+
     updateCamera();
 
     syncPlayerPosition();
