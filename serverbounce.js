@@ -140,6 +140,225 @@ return result;
 
 }
 
+
+
+function resolvePlayerCollisions() {
+
+    const list =
+        Object.values(players);
+
+
+    for (let i = 0; i < list.length; i++) {
+
+        for (
+            let j = i + 1;
+            j < list.length;
+            j++
+        ) {
+
+            const p1 = list[i];
+            const p2 = list[j];
+
+
+            const size1 =
+                Number(p1.size) || 64;
+
+            const size2 =
+                Number(p2.size) || 64;
+
+
+            const half1 =
+                size1 / 2;
+
+            const half2 =
+                size2 / 2;
+
+
+            const dx =
+                p1.x - p2.x;
+
+            const dy =
+                p1.y - p2.y;
+
+
+            const distance =
+                Math.sqrt(
+                    dx * dx +
+                    dy * dy
+                );
+
+
+            const minDistance =
+                half1 + half2;
+
+
+            /*
+               Не столкнулись.
+            */
+
+            if (
+                distance >=
+                minDistance
+            ) {
+                continue;
+            }
+
+
+            /*
+               Определяем нормаль
+               столкновения.
+            */
+
+            let nx;
+            let ny;
+
+
+            if (distance > 0.001) {
+
+                nx =
+                    dx / distance;
+
+                ny =
+                    dy / distance;
+
+            } else {
+
+                /*
+                   Если центры полностью совпали,
+                   используем направление относительной
+                   скорости.
+                */
+
+                const rvx =
+                    p1.vx - p2.vx;
+
+                const rvy =
+                    p1.vy - p2.vy;
+
+
+                const relativeSpeed =
+                    Math.sqrt(
+                        rvx * rvx +
+                        rvy * rvy
+                    );
+
+
+                if (
+                    relativeSpeed >
+                    0.001
+                ) {
+
+                    nx =
+                        rvx /
+                        relativeSpeed;
+
+                    ny =
+                        rvy /
+                        relativeSpeed;
+
+                } else {
+
+                    nx = 1;
+                    ny = 0;
+                }
+            }
+
+
+            /*
+               Скорость каждого игрока.
+            */
+
+            const speed1 =
+                Math.sqrt(
+                    p1.vx * p1.vx +
+                    p1.vy * p1.vy
+                );
+
+
+            const speed2 =
+                Math.sqrt(
+                    p2.vx * p2.vx +
+                    p2.vy * p2.vy
+                );
+
+
+            /*
+               СРЕДНЯЯ СКОРОСТЬ.
+               
+               Именно этого ты хотел:
+               
+               (скорость P1 + скорость P2) / 2
+            */
+
+            const sharedSpeed =
+                (
+                    speed1 +
+                    speed2
+                ) / 2;
+
+
+            /*
+               P1 отскакивает в одну сторону.
+            */
+
+            p1.vx =
+                nx *
+                sharedSpeed;
+
+            p1.vy =
+                ny *
+                sharedSpeed;
+
+
+            /*
+               P2 отскакивает
+               в противоположную сторону.
+            */
+
+            p2.vx =
+                -nx *
+                sharedSpeed;
+
+            p2.vy =
+                -ny *
+                sharedSpeed;
+
+
+            /*
+               Раздвигаем игроков,
+               чтобы они не оставались
+               внутри друг друга.
+            */
+
+            const overlap =
+                minDistance -
+                distance;
+
+
+            if (overlap > 0) {
+
+                const push =
+                    overlap / 2 + 0.5;
+
+
+                p1.x +=
+                    nx * push;
+
+                p1.y +=
+                    ny * push;
+
+
+                p2.x -=
+                    nx * push;
+
+                p2.y -=
+                    ny * push;
+            }
+        }
+    }
+}
+
+
 /* =====================================================
 SOCKET.IO
 ===================================================== */
@@ -156,12 +375,13 @@ console.log(
 */
 
 players[socket.id] = {
-
     id: socket.id,
 
     x: 200,
-
     y: 250,
+
+    vx: 0,
+    vy: 0,
 
     size: 64,
 
@@ -169,6 +389,7 @@ players[socket.id] = {
 
     pixels: null
 };
+
 
 
 /*
@@ -300,6 +521,42 @@ socket.on(
                 );
         }
 
+        /*
+           Скорость игрока.
+        */
+
+        const vx =
+            Number(data.vx);
+
+        const vy =
+            Number(data.vy);
+
+
+        if (
+            Number.isFinite(vx) &&
+            Number.isFinite(vy)
+        ) {
+        
+            players[socket.id].vx =
+                Math.max(
+                    -1000,
+                    Math.min(
+                        1000,
+                        vx
+                    )
+                );
+            
+            players[socket.id].vy =
+                Math.max(
+                    -1000,
+                    Math.min(
+                        1000,
+                        vy
+                    )
+                );
+        }
+
+
 
         /*
            Ник.
@@ -364,12 +621,26 @@ socket.on(
            актуальное состояние.
         */
 
+        /*
+           Проверяем столкновения
+           между всеми игроками.
+        */
+            
+        resolvePlayerCollisions();
+            
+            
+        /*
+           Отправляем результат
+           всем игрокам.
+        */
+            
         io.emit(
             "players:update",
             players
         );
-    }
-);
+        
+            }
+        );
 
 
 /* =================================================
