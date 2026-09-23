@@ -4,7 +4,7 @@ const { Server } = require("socket.io");
 const path = require("path");
 
 /* =====================================================
-НАСТРОЙКИ
+   НАСТРОЙКИ
 ===================================================== */
 
 const PORT = process.env.PORT || 3000;
@@ -14,133 +14,162 @@ const app = express();
 const server = http.createServer(app);
 
 const io = new Server(server, {
-cors: {
-origin: true,
-credentials: true
-}
+    cors: {
+        origin: true,
+        credentials: true
+    }
 });
 
 /* =====================================================
-MIDDLEWARE
+   MIDDLEWARE
 ===================================================== */
 
 app.use(
-express.json({
-limit: "2mb"
-})
+    express.json({
+        limit: "2mb"
+    })
 );
 
 app.use(
-express.urlencoded({
-extended: true
-})
+    express.urlencoded({
+        extended: true
+    })
 );
 
 /* =====================================================
-STATIC
+   STATIC
 ===================================================== */
 
 app.use(
-express.static(__dirname)
+    express.static(__dirname)
 );
 
 /* =====================================================
-ИГРОКИ
+   ИГРОКИ
 ===================================================== */
 
 const players = {};
 
-/*
-Максимальный размер данных куба.
-*/
+
+/* =====================================================
+   ОЧИСТКА PIXELS
+===================================================== */
 
 function sanitizePixels(pixels) {
 
-if (!Array.isArray(pixels))
-    return null;
-
-if (pixels.length !== 8)
-    return null;
-
-const result = [];
-
-for (let y = 0; y < 8; y++) {
-
-    if (
-        !Array.isArray(pixels[y]) ||
-        pixels[y].length !== 8
-    ) {
+    if (!Array.isArray(pixels))
         return null;
-    }
 
-    result[y] = [];
+    if (pixels.length !== 8)
+        return null;
 
-    for (let x = 0; x < 8; x++) {
+    const result = [];
 
-        const pixel =
-            pixels[y][x];
+    for (let y = 0; y < 8; y++) {
 
         if (
-            !pixel ||
-            typeof pixel !== "object"
+            !Array.isArray(pixels[y]) ||
+            pixels[y].length !== 8
         ) {
-            result[y][x] = null;
-            continue;
+            return null;
         }
 
-        const r =
-            Math.max(
-                0,
-                Math.min(
-                    255,
-                    Number(pixel.r) || 0
-                )
-            );
+        result[y] = [];
 
-        const g =
-            Math.max(
-                0,
-                Math.min(
-                    255,
-                    Number(pixel.g) || 0
-                )
-            );
+        for (let x = 0; x < 8; x++) {
 
-        const b =
-            Math.max(
-                0,
-                Math.min(
-                    255,
-                    Number(pixel.b) || 0
-                )
-            );
+            const pixel =
+                pixels[y][x];
 
-        const a =
-            pixel.a == null
-                ? 1
-                : Math.max(
+            if (
+                !pixel ||
+                typeof pixel !== "object"
+            ) {
+                result[y][x] = null;
+                continue;
+            }
+
+            const r =
+                Math.max(
                     0,
                     Math.min(
-                        1,
-                        Number(pixel.a)
+                        255,
+                        Number(pixel.r) || 0
                     )
                 );
 
-        result[y][x] = {
-            r,
-            g,
-            b,
-            a
-        };
+            const g =
+                Math.max(
+                    0,
+                    Math.min(
+                        255,
+                        Number(pixel.g) || 0
+                    )
+                );
+
+            const b =
+                Math.max(
+                    0,
+                    Math.min(
+                        255,
+                        Number(pixel.b) || 0
+                    )
+                );
+
+            const a =
+                pixel.a == null
+                    ? 1
+                    : Math.max(
+                        0,
+                        Math.min(
+                            1,
+                            Number(pixel.a)
+                        )
+                    );
+
+            result[y][x] = {
+                r,
+                g,
+                b,
+                a
+            };
+        }
     }
-}
 
-return result;
-
-
+    return result;
 }
 
 
+/* =====================================================
+   КОЛЛИЗИИ ИГРОКОВ
+===================================================== */
+
+/*
+   При столкновении:
+
+   speed1 = скорость P1
+   speed2 = скорость P2
+
+   sharedSpeed =
+       (speed1 + speed2) / 2
+
+   После столкновения:
+
+   P1 → sharedSpeed
+   P2 → sharedSpeed
+
+   но в противоположных направлениях.
+
+   Работает и когда один игрок стоит:
+
+   P1 = 100
+   P2 = 0
+
+   результат:
+
+   P1 = 50
+   P2 = 50
+*/
 
 function resolvePlayerCollisions() {
 
@@ -148,7 +177,11 @@ function resolvePlayerCollisions() {
         Object.values(players);
 
 
-    for (let i = 0; i < list.length; i++) {
+    for (
+        let i = 0;
+        i < list.length;
+        i++
+    ) {
 
         for (
             let j = i + 1;
@@ -159,6 +192,14 @@ function resolvePlayerCollisions() {
             const p1 = list[i];
             const p2 = list[j];
 
+
+            if (!p1 || !p2)
+                continue;
+
+
+            /* =================================================
+               РАЗМЕРЫ
+            ================================================= */
 
             const size1 =
                 Number(p1.size) || 64;
@@ -174,11 +215,17 @@ function resolvePlayerCollisions() {
                 size2 / 2;
 
 
+            /* =================================================
+               РАССТОЯНИЕ
+            ================================================= */
+
             const dx =
-                p1.x - p2.x;
+                Number(p1.x) -
+                Number(p2.x);
 
             const dy =
-                p1.y - p2.y;
+                Number(p1.y) -
+                Number(p2.y);
 
 
             const distance =
@@ -193,7 +240,7 @@ function resolvePlayerCollisions() {
 
 
             /*
-               Не столкнулись.
+               Не пересекаются.
             */
 
             if (
@@ -204,10 +251,9 @@ function resolvePlayerCollisions() {
             }
 
 
-            /*
-               Определяем нормаль
-               столкновения.
-            */
+            /* =================================================
+               НОРМАЛЬ СТОЛКНОВЕНИЯ
+            ================================================= */
 
             let nx;
             let ny;
@@ -224,16 +270,18 @@ function resolvePlayerCollisions() {
             } else {
 
                 /*
-                   Если центры полностью совпали,
-                   используем направление относительной
-                   скорости.
+                   Центры полностью совпали.
+
+                   Используем относительную скорость.
                 */
 
                 const rvx =
-                    p1.vx - p2.vx;
+                    Number(p1.vx) -
+                    Number(p2.vx);
 
                 const rvy =
-                    p1.vy - p2.vy;
+                    Number(p1.vy) -
+                    Number(p2.vy);
 
 
                 const relativeSpeed =
@@ -244,8 +292,7 @@ function resolvePlayerCollisions() {
 
 
                 if (
-                    relativeSpeed >
-                    0.001
+                    relativeSpeed > 0.001
                 ) {
 
                     nx =
@@ -258,37 +305,113 @@ function resolvePlayerCollisions() {
 
                 } else {
 
+                    /*
+                       Оба стоят в одной точке.
+                    */
+
                     nx = 1;
                     ny = 0;
                 }
             }
 
 
-            /*
-               Скорость каждого игрока.
-            */
+            /* =================================================
+               СКОРОСТИ
+            ================================================= */
+
+            const p1vx =
+                Number(p1.vx) || 0;
+
+            const p1vy =
+                Number(p1.vy) || 0;
+
+            const p2vx =
+                Number(p2.vx) || 0;
+
+            const p2vy =
+                Number(p2.vy) || 0;
+
 
             const speed1 =
                 Math.sqrt(
-                    p1.vx * p1.vx +
-                    p1.vy * p1.vy
+                    p1vx * p1vx +
+                    p1vy * p1vy
                 );
 
 
             const speed2 =
                 Math.sqrt(
-                    p2.vx * p2.vx +
-                    p2.vy * p2.vy
+                    p2vx * p2vx +
+                    p2vy * p2vy
                 );
 
 
+            /* =================================================
+               ПРОВЕРКА НАПРАВЛЕНИЯ
+            ================================================= */
+
             /*
-               СРЕДНЯЯ СКОРОСТЬ.
-               
-               Именно этого ты хотел:
-               
-               (скорость P1 + скорость P2) / 2
+               Относительная скорость вдоль нормали.
+
+               Если игроки уже разлетаются,
+               повторно не отскакиваем.
             */
+
+            const relativeNormalSpeed =
+                (
+                    p1vx - p2vx
+                ) * nx +
+                (
+                    p1vy - p2vy
+                ) * ny;
+
+
+            /*
+               Если они уже удаляются друг от друга,
+               просто оставляем их раздвигаться.
+            */
+
+            if (
+                relativeNormalSpeed <= 0
+            ) {
+
+                /*
+                   Но обязательно раздвигаем,
+                   если они пересекаются.
+                */
+
+                const overlap =
+                    minDistance -
+                    distance;
+
+
+                if (overlap > 0) {
+
+                    const push =
+                        overlap / 2 + 0.5;
+
+
+                    p1.x +=
+                        nx * push;
+
+                    p1.y +=
+                        ny * push;
+
+
+                    p2.x -=
+                        nx * push;
+
+                    p2.y -=
+                        ny * push;
+                }
+
+                continue;
+            }
+
+
+            /* =================================================
+               СРЕДНЯЯ СКОРОСТЬ
+            ================================================= */
 
             const sharedSpeed =
                 (
@@ -297,9 +420,9 @@ function resolvePlayerCollisions() {
                 ) / 2;
 
 
-            /*
-               P1 отскакивает в одну сторону.
-            */
+            /* =================================================
+               ОТСКОК P1
+            ================================================= */
 
             p1.vx =
                 nx *
@@ -310,10 +433,9 @@ function resolvePlayerCollisions() {
                 sharedSpeed;
 
 
-            /*
-               P2 отскакивает
-               в противоположную сторону.
-            */
+            /* =================================================
+               ОТСКОК P2
+            ================================================= */
 
             p2.vx =
                 -nx *
@@ -324,11 +446,9 @@ function resolvePlayerCollisions() {
                 sharedSpeed;
 
 
-            /*
-               Раздвигаем игроков,
-               чтобы они не оставались
-               внутри друг друга.
-            */
+            /* =================================================
+               РАЗДВИГАЕМ ИГРОКОВ
+            ================================================= */
 
             const overlap =
                 minDistance -
@@ -336,6 +456,12 @@ function resolvePlayerCollisions() {
 
 
             if (overlap > 0) {
+
+                /*
+                   Небольшой запас,
+                   чтобы они не застряли
+                   друг в друге.
+                */
 
                 const push =
                     overlap / 2 + 0.5;
@@ -360,518 +486,527 @@ function resolvePlayerCollisions() {
 
 
 /* =====================================================
-SOCKET.IO
+   SOCKET.IO
 ===================================================== */
 
-io.on("connection", socket => {
-
-console.log(
-    `Игрок подключён: ${socket.id}`
-);
-
-
-/*
-   Создаём игрока.
-*/
-
-players[socket.id] = {
-    id: socket.id,
-
-    x: 200,
-    y: 250,
-
-    vx: 0,
-    vy: 0,
-
-    size: 64,
-
-    nickname: "Игрок",
-
-    pixels: null
-};
-
-
-
-/*
-   Сразу отправляем подключившемуся
-   список остальных игроков.
-*/
-
-socket.emit(
-    "players:update",
-    players
-);
-
-
-/*
-   И сообщаем всем,
-   что появился новый игрок.
-*/
-
-io.emit(
-    "players:update",
-    players
-);
-
-
-/* =================================================
-   ИМЯ
-================================================= */
-
-socket.on(
-    "player:name",
-    name => {
-
-        if (
-            typeof name !==
-            "string"
-        ) {
-            return;
-        }
-
-        name =
-            name.trim();
-
-        if (!name) {
-            name = "Игрок";
-        }
-
-        name =
-            name.substring(
-                0,
-                20
-            );
-
-        if (
-            players[socket.id]
-        ) {
-
-            players[socket.id].nickname =
-                name;
-        }
-
-
-        io.emit(
-            "players:update",
-            players
-        );
-    }
-);
-
-
-/* =================================================
-   ПОЗИЦИЯ ИГРОКА
-================================================= */
-
-socket.on(
-    "player:move",
-    data => {
-
-        if (
-            !players[socket.id]
-        ) {
-            return;
-        }
-
-        if (
-            !data ||
-            typeof data !== "object"
-        ) {
-            return;
-        }
-
-
-        /*
-           Координаты.
-        */
-
-        const x =
-            Number(data.x);
-
-        const y =
-            Number(data.y);
-
-
-        if (
-            Number.isFinite(x) &&
-            Number.isFinite(y)
-        ) {
-
-            /*
-               Защита от слишком
-               больших координат.
-            */
-
-            players[socket.id].x =
-                Math.max(
-                    -100000,
-                    Math.min(
-                        100000,
-                        x
-                    )
-                );
-
-            players[socket.id].y =
-                Math.max(
-                    -100000,
-                    Math.min(
-                        100000,
-                        y
-                    )
-                );
-        }
-
-        /*
-           Скорость игрока.
-        */
-
-        const vx =
-            Number(data.vx);
-
-        const vy =
-            Number(data.vy);
-
-
-        if (
-            Number.isFinite(vx) &&
-            Number.isFinite(vy)
-        ) {
-        
-            players[socket.id].vx =
-                Math.max(
-                    -1000,
-                    Math.min(
-                        1000,
-                        vx
-                    )
-                );
-            
-            players[socket.id].vy =
-                Math.max(
-                    -1000,
-                    Math.min(
-                        1000,
-                        vy
-                    )
-                );
-        }
-
-
-
-        /*
-           Ник.
-        */
-
-        if (
-            typeof data.nickname ===
-            "string"
-        ) {
-
-            players[socket.id].nickname =
-                data.nickname
-                    .trim()
-                    .substring(
-                        0,
-                        20
-                    ) ||
-                "Игрок";
-        }
-
-
-        /*
-           Куб.
-        */
-
-        const cleanPixels =
-            sanitizePixels(
-                data.pixels
-            );
-
-        if (cleanPixels) {
-
-            players[socket.id].pixels =
-                cleanPixels;
-        }
-
-
-        /*
-           Размер игрока.
-        */
-
-        const size =
-            Number(data.size);
-
-        if (
-            Number.isFinite(size)
-        ) {
-
-            players[socket.id].size =
-                Math.max(
-                    16,
-                    Math.min(
-                        256,
-                        size
-                    )
-                );
-        }
-
-
-        /*
-           Отправляем всем
-           актуальное состояние.
-        */
-
-        /*
-           Проверяем столкновения
-           между всеми игроками.
-        */
-            
-        resolvePlayerCollisions();
-            
-            
-        /*
-           Отправляем результат
-           всем игрокам.
-        */
-            
-        io.emit(
-            "players:update",
-            players
-        );
-        
-            }
-        );
-
-
-/* =================================================
-   CHAT
-================================================= */
-
-socket.on(
-    "chat:message",
-    message => {
-
-        if (
-            typeof message !==
-            "string"
-        ) {
-            return;
-        }
-
-        message =
-            message.trim();
-
-        if (!message) {
-            return;
-        }
-
-        if (
-            message.length > 200
-        ) {
-
-            message =
-                message.substring(
-                    0,
-                    200
-                );
-        }
-
-        io.emit(
-            "chat:message",
-            {
-
-                id:
-                    socket.id,
-
-                username:
-                    players[socket.id]
-                        ?.nickname ||
-                    "Игрок",
-
-                message,
-
-                time:
-                    Date.now()
-            }
-        );
-    }
-);
-
-
-/* =================================================
-   ОТКЛЮЧЕНИЕ
-================================================= */
-
-socket.on(
-    "disconnect",
-    reason => {
-
-        delete players[
-            socket.id
-        ];
-
-
-        io.emit(
-            "player:left",
-            socket.id
-        );
-
-
-        io.emit(
-            "players:update",
-            players
-        );
-
+io.on(
+    "connection",
+    socket => {
 
         console.log(
-            `Игрок отключён: ${socket.id} (${reason})`
+            `Игрок подключён: ${socket.id}`
         );
-    }
-);
 
 
-});
+        /* =================================================
+           СОЗДАЁМ ИГРОКА
+        ================================================= */
 
-/* =====================================================
-API ИГРОКОВ
-===================================================== */
+        players[socket.id] = {
 
-app.get(
-"/api/players",
-(req, res) => {
+            id:
+                socket.id,
 
-    const search =
-        String(
-            req.query.search ||
-            ""
-        )
-        .trim()
-        .toLowerCase();
+            x:
+                200,
+
+            y:
+                250,
+
+            vx:
+                0,
+
+            vy:
+                0,
+
+            size:
+                64,
+
+            nickname:
+                "Игрок",
+
+            pixels:
+                null
+        };
 
 
-    let result =
-        Object.values(
+        /* =================================================
+           ОТПРАВЛЯЕМ ИГРОКАМ СОСТОЯНИЕ
+        ================================================= */
+
+        socket.emit(
+            "players:update",
             players
         );
 
 
-    if (search) {
+        io.emit(
+            "players:update",
+            players
+        );
 
-        result =
-            result.filter(
-                player => {
 
-                    const username =
-                        String(
-                            player.nickname ||
-                            ""
-                        )
-                        .toLowerCase();
+        /* =================================================
+           ИМЯ
+        ================================================= */
 
-                    const id =
-                        String(
-                            player.id ||
-                            ""
-                        )
-                        .toLowerCase();
+        socket.on(
+            "player:name",
+            name => {
 
-                    return (
-                        username.includes(
-                            search
-                        ) ||
-                        id.includes(
-                            search
-                        )
-                    );
+                if (
+                    typeof name !==
+                    "string"
+                ) {
+                    return;
                 }
-            );
+
+
+                name =
+                    name.trim();
+
+
+                if (!name) {
+                    name = "Игрок";
+                }
+
+
+                name =
+                    name.substring(
+                        0,
+                        20
+                    );
+
+
+                if (
+                    players[socket.id]
+                ) {
+
+                    players[socket.id].nickname =
+                        name;
+                }
+
+
+                io.emit(
+                    "players:update",
+                    players
+                );
+            }
+        );
+
+
+        /* =================================================
+           ПОЗИЦИЯ И СКОРОСТЬ ИГРОКА
+        ================================================= */
+
+        socket.on(
+            "player:move",
+            data => {
+
+                if (
+                    !players[socket.id]
+                ) {
+                    return;
+                }
+
+
+                if (
+                    !data ||
+                    typeof data !==
+                    "object"
+                ) {
+                    return;
+                }
+
+
+                const player =
+                    players[socket.id];
+
+
+                /* =================================================
+                   КООРДИНАТЫ
+                ================================================= */
+
+                const x =
+                    Number(data.x);
+
+                const y =
+                    Number(data.y);
+
+
+                if (
+                    Number.isFinite(x) &&
+                    Number.isFinite(y)
+                ) {
+
+                    player.x =
+                        Math.max(
+                            -100000,
+                            Math.min(
+                                100000,
+                                x
+                            )
+                        );
+
+                    player.y =
+                        Math.max(
+                            -100000,
+                            Math.min(
+                                100000,
+                                y
+                            )
+                        );
+                }
+
+
+                /* =================================================
+                   СКОРОСТЬ
+                ================================================= */
+
+                const vx =
+                    Number(data.vx);
+
+                const vy =
+                    Number(data.vy);
+
+
+                if (
+                    Number.isFinite(vx) &&
+                    Number.isFinite(vy)
+                ) {
+
+                    player.vx =
+                        Math.max(
+                            -1000,
+                            Math.min(
+                                1000,
+                                vx
+                            )
+                        );
+
+                    player.vy =
+                        Math.max(
+                            -1000,
+                            Math.min(
+                                1000,
+                                vy
+                            )
+                        );
+                }
+
+
+                /* =================================================
+                   НИК
+                ================================================= */
+
+                if (
+                    typeof data.nickname ===
+                    "string"
+                ) {
+
+                    player.nickname =
+                        data.nickname
+                            .trim()
+                            .substring(
+                                0,
+                                20
+                            ) ||
+                        "Игрок";
+                }
+
+
+                /* =================================================
+                   PIXELS
+                ================================================= */
+
+                const cleanPixels =
+                    sanitizePixels(
+                        data.pixels
+                    );
+
+
+                if (cleanPixels) {
+
+                    player.pixels =
+                        cleanPixels;
+                }
+
+
+                /* =================================================
+                   РАЗМЕР
+                ================================================= */
+
+                const size =
+                    Number(data.size);
+
+
+                if (
+                    Number.isFinite(size)
+                ) {
+
+                    player.size =
+                        Math.max(
+                            16,
+                            Math.min(
+                                256,
+                                size
+                            )
+                        );
+                }
+
+
+                /* =================================================
+                   КОЛЛИЗИИ
+                ================================================= */
+
+                resolvePlayerCollisions();
+
+
+                /* =================================================
+                   ОТПРАВЛЯЕМ СОСТОЯНИЕ
+                ================================================= */
+
+                io.emit(
+                    "players:update",
+                    players
+                );
+            }
+        );
+
+
+        /* =================================================
+           CHAT
+        ================================================= */
+
+        socket.on(
+            "chat:message",
+            message => {
+
+                if (
+                    typeof message !==
+                    "string"
+                ) {
+                    return;
+                }
+
+
+                message =
+                    message.trim();
+
+
+                if (!message) {
+                    return;
+                }
+
+
+                if (
+                    message.length > 200
+                ) {
+
+                    message =
+                        message.substring(
+                            0,
+                            200
+                        );
+                }
+
+
+                io.emit(
+                    "chat:message",
+                    {
+
+                        id:
+                            socket.id,
+
+                        username:
+                            players[socket.id]
+                                ?.nickname ||
+                            "Игрок",
+
+                        message:
+
+                            message,
+
+                        time:
+                            Date.now()
+                    }
+                );
+            }
+        );
+
+
+        /* =================================================
+           ОТКЛЮЧЕНИЕ
+        ================================================= */
+
+        socket.on(
+            "disconnect",
+            reason => {
+
+                delete players[
+                    socket.id
+                ];
+
+
+                io.emit(
+                    "player:left",
+                    socket.id
+                );
+
+
+                io.emit(
+                    "players:update",
+                    players
+                );
+
+
+                console.log(
+                    `Игрок отключён: ${socket.id} (${reason})`
+                );
+            }
+        );
     }
-
-
-    res.json(
-        result
-    );
-}
-
-
 );
 
+
 /* =====================================================
-ГЛАВНАЯ СТРАНИЦА
+   API ИГРОКОВ
 ===================================================== */
 
 app.get(
-"/",
-(req, res) => {
+    "/api/players",
+    (req, res) => {
 
-    res.sendFile(
-        path.join(
-            __dirname,
-            "BOUNCE.html"
-        )
-    );
-}
+        const search =
+            String(
+                req.query.search ||
+                ""
+            )
+            .trim()
+            .toLowerCase();
 
 
+        let result =
+            Object.values(
+                players
+            );
+
+
+        if (search) {
+
+            result =
+                result.filter(
+                    player => {
+
+                        const username =
+                            String(
+                                player.nickname ||
+                                ""
+                            )
+                            .toLowerCase();
+
+
+                        const id =
+                            String(
+                                player.id ||
+                                ""
+                            )
+                            .toLowerCase();
+
+
+                        return (
+                            username.includes(
+                                search
+                            ) ||
+                            id.includes(
+                                search
+                            )
+                        );
+                    }
+                );
+        }
+
+
+        res.json(
+            result
+        );
+    }
 );
 
+
 /* =====================================================
-FALLBACK
+   ГЛАВНАЯ СТРАНИЦА
+===================================================== */
+
+app.get(
+    "/",
+    (req, res) => {
+
+        res.sendFile(
+            path.join(
+                __dirname,
+                "BOUNCE.html"
+            )
+        );
+    }
+);
+
+
+/* =====================================================
+   FALLBACK
 ===================================================== */
 
 app.use(
-(req, res, next) => {
+    (req, res, next) => {
 
-    if (
-        req.method !==
-        "GET"
-    ) {
-        return next();
+        if (
+            req.method !==
+            "GET"
+        ) {
+            return next();
+        }
+
+
+        res.sendFile(
+            path.join(
+                __dirname,
+                "BOUNCE.html"
+            )
+        );
     }
-
-    res.sendFile(
-        path.join(
-            __dirname,
-            "BOUNCE.html"
-        )
-    );
-}
-
-
 );
 
+
 /* =====================================================
-START
+   START
 ===================================================== */
 
 server.listen(
-PORT,
-() => {
+    PORT,
+    () => {
 
-    console.log("");
+        console.log("");
 
-    console.log(
-        "================================"
-    );
+        console.log(
+            "================================"
+        );
 
-    console.log(
-        " SERVER ЗАПУЩЕН"
-    );
+        console.log(
+            " SERVER ЗАПУЩЕН"
+        );
 
-    console.log(
-        ` PORT: ${PORT}`
-    );
+        console.log(
+            ` PORT: ${PORT}`
+        );
 
-    console.log(
-        " PLAYERS: ONLINE"
-    );
+        console.log(
+            " PLAYERS: ONLINE"
+        );
 
-    console.log(
-        "================================"
-    );
+        console.log(
+            "================================"
+        );
 
-    console.log("");
-}
-
-
+        console.log("");
+    }
 );
