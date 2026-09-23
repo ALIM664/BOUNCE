@@ -1256,6 +1256,11 @@ function syncPlayerPosition() {
             x: cube.x,
             y: cube.y,
 
+            vx: cube.vx,
+            vy: cube.vy,
+
+            size: cube.size,
+
             nickname:
                 playerNickname,
 
@@ -1269,6 +1274,7 @@ function syncPlayerPosition() {
                 )
         }
     );
+
 }
 
 
@@ -4091,99 +4097,314 @@ function update() {
     /*
        Коллизия с другими игроками.
     */
+    /*
+       =====================================================
+       ОТСКОК ОТ ДРУГИХ ИГРОКОВ
+       =====================================================
+    */
+    
     if (playersVisible) {
     
         for (const id in players) {
         
-            /*
-               Себя пропускаем.
-            */
-        
+            // Себя пропускаем
             if (id === socket.id)
                 continue;
         
+            const player = players[id];
         
-            const player =
-                players[id];
+            if (!player)
+                continue;
         
-        
-            if (
-                !isCollidingWithPlayer(
-                    player
-                )
-            )
+            if (!isCollidingWithPlayer(player))
                 continue;
         
         
-            const dx =
-                cube.x -
-                player.x;
+            /*
+               Размеры игроков
+            */
         
-            const dy =
-                cube.y -
-                player.y;
+            const playerSize =
+                Number(player.size) ||
+                cube.size;
+        
+            const half1 =
+                cube.size / 2;
+        
+            const half2 =
+                playerSize / 2;
         
         
             /*
-               Если игроки пересеклись,
-               определяем направление.
+               Вектор от второго игрока к нашему.
             */
         
-            if (
-                Math.abs(dx) >
-                Math.abs(dy)
-            ) {
+            let dx =
+                cube.x -
+                Number(player.x);
+        
+            let dy =
+                cube.y -
+                Number(player.y);
+        
+        
+            /*
+               Нормаль столкновения.
+        
+               Она показывает направление,
+               в котором нужно раздвинуть игроков.
+            */
+        
+            const distance =
+                Math.sqrt(
+                    dx * dx +
+                    dy * dy
+                );
+        
+        
+            let nx;
+            let ny;
+        
+        
+            if (distance > 0.001) {
             
-                if (dx < 0) {
-                
-                    cube.x =
-                        player.x -
-                        (cube.size +
-                        (player.size ||
-                        cube.size)) / 2;
-                
-                    cube.vx =
-                        -Math.abs(cube.vx);
-                
-                } else {
-                
-                    cube.x =
-                        player.x +
-                        (cube.size +
-                        (player.size ||
-                        cube.size)) / 2;
-                
-                    cube.vx =
-                        Math.abs(cube.vx);
-                }
+                nx =
+                    dx / distance;
+            
+                ny =
+                    dy / distance;
             
             } else {
             
-                if (dy < 0) {
+                /*
+                   Если центры совпали,
+                   используем направление
+                   относительно скорости.
+                */
+            
+                const speed =
+                    Math.sqrt(
+                        cube.vx * cube.vx +
+                        cube.vy * cube.vy
+                    );
+            
+                if (speed > 0.001) {
                 
-                    cube.y =
-                        player.y -
-                        (cube.size +
-                        (player.size ||
-                        cube.size)) / 2;
+                    nx =
+                        cube.vx / speed;
                 
-                    cube.vy =
-                        -Math.abs(cube.vy);
+                    ny =
+                        cube.vy / speed;
                 
                 } else {
                 
-                    cube.y =
-                        player.y +
-                        (cube.size +
-                        (player.size ||
-                        cube.size)) / 2;
-                
-                    cube.vy =
-                        Math.abs(cube.vy);
+                    nx = 1;
+                    ny = 0;
                 }
+            }
+        
+        
+            /*
+               =================================================
+               СКОРОСТИ
+               =================================================
+        
+               Берём скорость нашего куба
+               и скорость второго игрока.
+            */
+        
+            const p1vx =
+                Number(cube.vx) || 0;
+        
+            const p1vy =
+                Number(cube.vy) || 0;
+        
+            const p2vx =
+                Number(player.vx) || 0;
+        
+            const p2vy =
+                Number(player.vy) || 0;
+        
+        
+            /*
+               Средняя скорость.
+            */
+        
+            const averageVx =
+                (p1vx + p2vx) / 2;
+        
+            const averageVy =
+                (p1vy + p2vy) / 2;
+        
+        
+            /*
+               Относительная скорость
+               вдоль направления столкновения.
+            */
+        
+            const relativeVx =
+                p1vx - p2vx;
+        
+            const relativeVy =
+                p1vy - p2vy;
+        
+        
+            const relativeSpeed =
+                relativeVx * nx +
+                relativeVy * ny;
+        
+        
+            /*
+               Если игроки уже расходятся,
+               повторно отбрасывать их не нужно.
+            */
+        
+            if (relativeSpeed < 0) {
+            
+                /*
+                   Средняя скорость по нормали.
+                */
+            
+                const averageNormal =
+                    averageVx * nx +
+                    averageVy * ny;
+            
+            
+                /*
+                   Скорость после отскока.
+            
+                   Каждый получает скорость,
+                   симметричную относительно
+                   средней скорости.
+            
+                   P1 = средняя + половина
+                        относительной скорости
+            
+                   P2 = средняя - половина
+                        относительной скорости
+                */
+            
+                const newP1Normal =
+                    averageNormal +
+                    Math.abs(relativeSpeed) / 2;
+            
+                const newP2Normal =
+                    averageNormal -
+                    Math.abs(relativeSpeed) / 2;
+            
+            
+                /*
+                   Тангенциальная составляющая
+                   сохраняется.
+                */
+            
+                const tx = -ny;
+                const ty = nx;
+            
+            
+                const p1Tangent =
+                    p1vx * tx +
+                    p1vy * ty;
+            
+                const p2Tangent =
+                    p2vx * tx +
+                    p2vy * ty;
+            
+            
+                /*
+                   Новые скорости нашего игрока.
+                */
+            
+                cube.vx =
+                    nx * newP1Normal +
+                    tx * p1Tangent;
+            
+                cube.vy =
+                    ny * newP1Normal +
+                    ty * p1Tangent;
+            
+            
+                /*
+                   Новая скорость второго игрока.
+                */
+            
+                const newP2vx =
+                    nx * newP2Normal +
+                    tx * p2Tangent;
+            
+                const newP2vy =
+                    ny * newP2Normal +
+                    ty * p2Tangent;
+            
+            
+                /*
+                   Отправляем новую скорость
+                   второму игроку.
+                */
+            
+                socket.emit(
+                    "playerBounce",
+                    {
+                        id: id,
+                        vx: newP2vx,
+                        vy: newP2vy
+                    }
+                );
+            }
+        
+        
+            /*
+               =================================================
+               РАЗДВИГАЕМ ИГРОКОВ
+               =================================================
+        
+               Это предотвращает ситуацию, когда два
+               игрока остаются внутри друг друга.
+            */
+        
+            const minDistance =
+                half1 + half2;
+        
+        
+            const overlap =
+                minDistance - distance;
+        
+        
+            if (overlap > 0) {
+            
+                const push =
+                    overlap / 2 + 0.5;
+            
+            
+                cube.x +=
+                    nx * push;
+            
+                cube.y +=
+                    ny * push;
+            
+            
+                /*
+                   Второго игрока сервер должен
+                   раздвинуть у себя.
+                */
+            
+                socket.emit(
+                    "playerPush",
+                    {
+                        id: id,
+                        x:
+                            Number(player.x) -
+                            nx * push,
+                    
+                        y:
+                            Number(player.y) -
+                            ny * push
+                    }
+                );
             }
         }
     }
+
 
     updateCamera();
 
