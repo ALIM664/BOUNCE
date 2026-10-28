@@ -2,605 +2,254 @@ const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
 const path = require("path");
+const fs = require("fs");
 
 /* =====================================================
-НАСТРОЙКИ
+   НАСТРОЙКИ
 ===================================================== */
-
 const PORT = process.env.PORT || 3000;
-
 const app = express();
-
 const server = http.createServer(app);
 
 const io = new Server(server, {
-cors: {
-origin: true,
-credentials: true
-}
+    cors: {
+        origin: true,
+        credentials: true
+    }
 });
 
 /* =====================================================
-MIDDLEWARE
+   MIDDLEWARE
 ===================================================== */
-
-app.use(
-express.json({
-limit: "2mb"
-})
-);
-
-app.use(
-express.urlencoded({
-extended: true
-})
-);
+app.use(express.json({ limit: "2mb" }));
+app.use(express.urlencoded({ extended: true }));
 
 /* =====================================================
-STATIC
+   ИГРОКИ
 ===================================================== */
-
-app.use(
-express.static(__dirname)
-);
-
-/* =====================================================
-ИГРОКИ
-===================================================== */
-
-const players = {};
-
-/*
-Максимальный размер данных куба.
-*/
+const players = Object.create(null);
 
 function sanitizePixels(pixels) {
-
-if (!Array.isArray(pixels))
-    return null;
-
-if (pixels.length !== 8)
-    return null;
-
-const result = [];
-
-for (let y = 0; y < 8; y++) {
-
-    if (
-        !Array.isArray(pixels[y]) ||
-        pixels[y].length !== 8
-    ) {
+    if (!Array.isArray(pixels) || pixels.length !== 8) {
         return null;
     }
 
-    result[y] = [];
+    const result = [];
 
-    for (let x = 0; x < 8; x++) {
-
-        const pixel =
-            pixels[y][x];
-
-        if (
-            !pixel ||
-            typeof pixel !== "object"
-        ) {
-            result[y][x] = null;
-            continue;
+    for (let y = 0; y < 8; y++) {
+        if (!Array.isArray(pixels[y]) || pixels[y].length !== 8) {
+            return null;
         }
 
-        const r =
-            Math.max(
-                0,
-                Math.min(
-                    255,
-                    Number(pixel.r) || 0
-                )
-            );
+        result[y] = [];
 
-        const g =
-            Math.max(
-                0,
-                Math.min(
-                    255,
-                    Number(pixel.g) || 0
-                )
-            );
+        for (let x = 0; x < 8; x++) {
+            const pixel = pixels[y][x];
 
-        const b =
-            Math.max(
-                0,
-                Math.min(
-                    255,
-                    Number(pixel.b) || 0
-                )
-            );
+            if (!pixel || typeof pixel !== "object") {
+                result[y][x] = null;
+                continue;
+            }
 
-        const a =
-            pixel.a == null
-                ? 1
-                : Math.max(
-                    0,
-                    Math.min(
-                        1,
-                        Number(pixel.a)
-                    )
-                );
+            const channel = (value) => {
+                const n = Number(value);
 
-        result[y][x] = {
-            r,
-            g,
-            b,
-            a
-        };
+                return Number.isFinite(n)
+                    ? Math.max(0, Math.min(255, n))
+                    : 0;
+            };
+
+            const alphaValue =
+                pixel.a == null ? 1 : Number(pixel.a);
+
+            const a = Number.isFinite(alphaValue)
+                ? Math.max(0, Math.min(1, alphaValue))
+                : 1;
+
+            result[y][x] = {
+                r: channel(pixel.r),
+                g: channel(pixel.g),
+                b: channel(pixel.b),
+                a
+            };
+        }
     }
-}
 
-return result;
-
-
+    return result;
 }
 
 /* =====================================================
-SOCKET.IO
+   SOCKET.IO
+   ID используется только для внутренней синхронизации.
 ===================================================== */
+io.on("connection", (socket) => {
+    console.log(`Игрок подключён: ${socket.id}`);
 
-io.on("connection", socket => {
+    players[socket.id] = {
+        id: socket.id,
+        x: 200,
+        y: 250,
+        size: 64,
+        nickname: "Игрок",
+        pixels: null
+    };
 
-console.log(
-    `Игрок подключён: ${socket.id}`
-);
+    socket.emit("players:update", players);
+    io.emit("players:update", players);
 
+    /* ИМЯ ИГРОКА */
+    socket.on("player:name", (name) => {
+        if (typeof name !== "string") return;
 
-/*
-   Создаём игрока.
-*/
+        const cleanName = name.trim().slice(0, 20) || "Игрок";
 
-players[socket.id] = {
+        if (players[socket.id]) {
+            players[socket.id].nickname = cleanName;
+        }
 
-    id: socket.id,
+        io.emit("players:update", players);
+    });
 
-    x: 200,
+    /* ПОЗИЦИЯ И СОСТОЯНИЕ ИГРОКА */
+    socket.on("player:move", (data) => {
+        const player = players[socket.id];
 
-    y: 250,
-
-    size: 64,
-
-    nickname: "Игрок",
-
-    pixels: null
-};
-
-
-/*
-   Сразу отправляем подключившемуся
-   список остальных игроков.
-*/
-
-socket.emit(
-    "players:update",
-    players
-);
-
-
-/*
-   И сообщаем всем,
-   что появился новый игрок.
-*/
-
-io.emit(
-    "players:update",
-    players
-);
-
-
-/* =================================================
-   ИМЯ
-================================================= */
-
-socket.on(
-    "player:name",
-    name => {
-
-        if (
-            typeof name !==
-            "string"
-        ) {
+        if (!player || !data || typeof data !== "object") {
             return;
         }
 
-        name =
-            name.trim();
+        const x = Number(data.x);
+        const y = Number(data.y);
 
-        if (!name) {
-            name = "Игрок";
+        if (Number.isFinite(x) && Number.isFinite(y)) {
+            player.x = Math.max(-100000, Math.min(100000, x));
+            player.y = Math.max(-100000, Math.min(100000, y));
         }
 
-        name =
-            name.substring(
-                0,
-                20
-            );
-
-        if (
-            players[socket.id]
-        ) {
-
-            players[socket.id].nickname =
-                name;
+        if (typeof data.nickname === "string") {
+            player.nickname =
+                data.nickname.trim().slice(0, 20) || "Игрок";
         }
 
-
-        io.emit(
-            "players:update",
-            players
-        );
-    }
-);
-
-
-/* =================================================
-   ПОЗИЦИЯ ИГРОКА
-================================================= */
-
-socket.on(
-    "player:move",
-    data => {
-
-        if (
-            !players[socket.id]
-        ) {
-            return;
-        }
-
-        if (
-            !data ||
-            typeof data !== "object"
-        ) {
-            return;
-        }
-
-
-        /*
-           Координаты.
-        */
-
-        const x =
-            Number(data.x);
-
-        const y =
-            Number(data.y);
-
-
-        if (
-            Number.isFinite(x) &&
-            Number.isFinite(y)
-        ) {
-
-            /*
-               Защита от слишком
-               больших координат.
-            */
-
-            players[socket.id].x =
-                Math.max(
-                    -100000,
-                    Math.min(
-                        100000,
-                        x
-                    )
-                );
-
-            players[socket.id].y =
-                Math.max(
-                    -100000,
-                    Math.min(
-                        100000,
-                        y
-                    )
-                );
-        }
-
-
-        /*
-           Ник.
-        */
-
-        if (
-            typeof data.nickname ===
-            "string"
-        ) {
-
-            players[socket.id].nickname =
-                data.nickname
-                    .trim()
-                    .substring(
-                        0,
-                        20
-                    ) ||
-                "Игрок";
-        }
-
-
-        /*
-           Куб.
-        */
-
-        const cleanPixels =
-            sanitizePixels(
-                data.pixels
-            );
+        const cleanPixels = sanitizePixels(data.pixels);
 
         if (cleanPixels) {
-
-            players[socket.id].pixels =
-                cleanPixels;
+            player.pixels = cleanPixels;
         }
 
+        const size = Number(data.size);
 
-        /*
-           Размер игрока.
-        */
-
-        const size =
-            Number(data.size);
-
-        if (
-            Number.isFinite(size)
-        ) {
-
-            players[socket.id].size =
-                Math.max(
-                    16,
-                    Math.min(
-                        256,
-                        size
-                    )
-                );
+        if (Number.isFinite(size)) {
+            player.size = Math.max(16, Math.min(256, size));
         }
 
+        io.emit("players:update", players);
+    });
 
-        /*
-           Отправляем всем
-           актуальное состояние.
-        */
+    /* ЧАТ */
+    socket.on("chat:message", (message) => {
+        if (typeof message !== "string") return;
 
-        io.emit(
-            "players:update",
-            players
-        );
-    }
-);
+        const cleanMessage = message.trim().slice(0, 200);
 
+        if (!cleanMessage) return;
 
-/* =================================================
-   CHAT
-================================================= */
+        io.emit("chat:message", {
+            username: players[socket.id]?.nickname || "Игрок",
+            message: cleanMessage,
+            time: Date.now()
+        });
+    });
 
-socket.on(
-    "chat:message",
-    message => {
+    /* ОТКЛЮЧЕНИЕ ИГРОКА */
+    socket.on("disconnect", (reason) => {
+        delete players[socket.id];
 
-        if (
-            typeof message !==
-            "string"
-        ) {
-            return;
-        }
-
-        message =
-            message.trim();
-
-        if (!message) {
-            return;
-        }
-
-        if (
-            message.length > 200
-        ) {
-
-            message =
-                message.substring(
-                    0,
-                    200
-                );
-        }
-
-        io.emit(
-            "chat:message",
-            {
-
-                id:
-                    socket.id,
-
-                username:
-                    players[socket.id]
-                        ?.nickname ||
-                    "Игрок",
-
-                message,
-
-                time:
-                    Date.now()
-            }
-        );
-    }
-);
-
-
-/* =================================================
-   ОТКЛЮЧЕНИЕ
-================================================= */
-
-socket.on(
-    "disconnect",
-    reason => {
-
-        delete players[
-            socket.id
-        ];
-
-
-        io.emit(
-            "player:left",
-            socket.id
-        );
-
-
-        io.emit(
-            "players:update",
-            players
-        );
-
+        io.emit("player:left", socket.id);
+        io.emit("players:update", players);
 
         console.log(
             `Игрок отключён: ${socket.id} (${reason})`
         );
-    }
-);
-
-
+    });
 });
 
 /* =====================================================
-API ИГРОКОВ
+   API ИГРОКОВ — ПОИСК ПО НИКУ
+   ID не возвращается в ответе этого API.
 ===================================================== */
-
-app.get(
-"/api/players",
-(req, res) => {
-
-    const search =
-        String(
-            req.query.search ||
-            ""
-        )
+app.get("/api/players", (req, res) => {
+    const search = String(req.query.search || "")
         .trim()
-        .toLowerCase();
+        .toLocaleLowerCase();
 
+    const result = Object.values(players).filter((player) => {
+        const nickname = String(
+            player.nickname || "Игрок"
+        ).toLocaleLowerCase();
 
-    let result =
-        Object.values(
-            players
-        );
-
-
-    if (search) {
-
-        result =
-            result.filter(
-                player => {
-
-                    const username =
-                        String(
-                            player.nickname ||
-                            ""
-                        )
-                        .toLowerCase();
-
-                    const id =
-                        String(
-                            player.id ||
-                            ""
-                        )
-                        .toLowerCase();
-
-                    return (
-                        username.includes(
-                            search
-                        ) ||
-                        id.includes(
-                            search
-                        )
-                    );
-                }
-            );
-    }
-
+        return !search || nickname.includes(search);
+    });
 
     res.json(
-        result
+        result.map((player) => ({
+            nickname: player.nickname || "Игрок",
+            x: player.x,
+            y: player.y,
+            size: player.size,
+            pixels: player.pixels
+        }))
     );
-}
-
-
-);
+});
 
 /* =====================================================
-ГЛАВНАЯ СТРАНИЦА
+   СТАТИЧЕСКИЕ ФАЙЛЫ
 ===================================================== */
+app.use(express.static(__dirname));
 
-app.get(
-"/",
-(req, res) => {
+/* ГЛАВНАЯ СТРАНИЦА */
+app.get("/", (req, res) => {
+    const htmlPath = path.join(__dirname, "BOUNCE.html");
 
-    res.sendFile(
-        path.join(
-            __dirname,
-            "BOUNCE.html"
-        )
-    );
-}
+    if (!fs.existsSync(htmlPath)) {
+        return res.status(500).send(
+            "Не найден файл BOUNCE.html рядом с server.js"
+        );
+    }
 
+    res.sendFile(htmlPath);
+});
 
-);
-
-/* =====================================================
-FALLBACK
-===================================================== */
-
-app.use(
-(req, res, next) => {
-
-    if (
-        req.method !==
-        "GET"
-    ) {
+/* FALLBACK */
+app.use((req, res, next) => {
+    if (req.method !== "GET") {
         return next();
     }
 
-    res.sendFile(
-        path.join(
-            __dirname,
-            "BOUNCE.html"
-        )
-    );
-}
-
-
-);
+    res.status(404).send("Страница не найдена");
+});
 
 /* =====================================================
-START
+   ЗАПУСК СЕРВЕРА
 ===================================================== */
-
-server.listen(
-PORT,
-() => {
-
-    console.log("");
-
-    console.log(
-        "================================"
+server.on("error", (error) => {
+    console.error(
+        "Не удалось запустить сервер:",
+        error.message
     );
 
-    console.log(
-        " SERVER ЗАПУЩЕН"
-    );
+    if (error.code === "EADDRINUSE") {
+        console.error(
+            `Порт ${PORT} уже занят. Останови другой процесс или укажи другой PORT.`
+        );
+    }
+});
 
-    console.log(
-        ` PORT: ${PORT}`
-    );
-
-    console.log(
-        " PLAYERS: ONLINE"
-    );
-
-    console.log(
-        "================================"
-    );
-
-    console.log("");
-}
-
-
-);
+server.listen(PORT, () => {
+    console.log("================================");
+    console.log(" BOUNCE SERVER ЗАПУЩЕН");
+    console.log(` PORT: ${PORT}`);
+    console.log(` URL: http://localhost:${PORT}`);
+    console.log(" PLAYERS: ONLINE");
+    console.log("================================");
+});
