@@ -1217,41 +1217,31 @@ if (playersCollisionToggle) {
 let lastPlayerSync = 0;
 
 function syncPlayerPosition() {
-
-    //if (!socket.connected)
-    //    return;
-
     const now = performance.now();
 
-    /*
-       Не отправляем позицию сотни раз в секунду.
-    */
-
-    if (now - lastPlayerSync < 50)
+    // Отправляем обновления не чаще одного раза в 50 мс.
+    if (now - lastPlayerSync < 50) {
         return;
+    }
 
     lastPlayerSync = now;
 
+    socket.emit("player:move", {
+        x: cube.x,
+        y: cube.y,
 
-    socket.emit(
-        "player:move",
-        {
-            x: cube.x,
-            y: cube.y,
+        // Скорость по горизонтали и вертикали.
+        vx: cube.vx,
+        vy: cube.vy,
 
-            nickname:
-                playerNickname,
+        nickname: playerNickname,
 
-            pixels:
-                pixels.map(row =>
-                    row.map(pixel =>
-                        pixel
-                            ? { ...pixel }
-                            : null
-                    )
-                )
-        }
-    );
+        pixels: pixels.map(row =>
+            row.map(pixel =>
+                pixel ? { ...pixel } : null
+            )
+        )
+    });
 }
 
 
@@ -3829,94 +3819,74 @@ function update() {
        Коллизия с другими игроками.
     */
     if (playersVisible) {
-    
+
         for (const id in players) {
         
-            /*
-               Себя пропускаем.
-            */
-        
-            if (id === socket.id)
+            // Не сталкиваемся со своим кубом.
+            if (id === socket.id) {
                 continue;
+            }
         
+            const player = players[id];
         
-            const player =
-                players[id];
-        
-        
-            if (
-                !isCollidingWithPlayer(
-                    player
-                )
-            )
+            if (!isCollidingWithPlayer(player)) {
                 continue;
+            }
         
+            const dx = cube.x - player.x;
+            const dy = cube.y - player.y;
         
-            const dx =
-                cube.x -
-                player.x;
+            // Скорости второго игрока.
+            const otherVx = Number.isFinite(Number(player.vx))
+                ? Number(player.vx)
+                : 0;
         
-            const dy =
-                cube.y -
-                player.y;
+            const otherVy = Number.isFinite(Number(player.vy))
+                ? Number(player.vy)
+                : 0;
         
+            // Среднее значение модулей скоростей по каждой оси.
+            const averageSpeedX =
+                (Math.abs(cube.vx) + Math.abs(otherVx)) / 2;
         
-            /*
-               Если игроки пересеклись,
-               определяем направление.
-            */
+            const averageSpeedY =
+                (Math.abs(cube.vy) + Math.abs(otherVy)) / 2;
         
-            if (
-                Math.abs(dx) >
-                Math.abs(dy)
-            ) {
+            const otherSize = Number(player.size) > 0
+                ? Number(player.size)
+                : cube.size;
+        
+            // Выбираем ось, по которой произошло столкновение.
+            if (Math.abs(dx) > Math.abs(dy)) {
             
+                // Горизонтальное столкновение.
                 if (dx < 0) {
-                
                     cube.x =
-                        player.x -
-                        (cube.size +
-                        (player.size ||
-                        cube.size)) / 2;
+                        player.x - (cube.size + otherSize) / 2;
                 
-                    cube.vx =
-                        -Math.abs(cube.vx);
+                    cube.vx = -averageSpeedX;
                 
                 } else {
-                
                     cube.x =
-                        player.x +
-                        (cube.size +
-                        (player.size ||
-                        cube.size)) / 2;
+                        player.x + (cube.size + otherSize) / 2;
                 
-                    cube.vx =
-                        Math.abs(cube.vx);
+                    cube.vx = averageSpeedX;
                 }
             
             } else {
             
+                // Вертикальное столкновение.
                 if (dy < 0) {
-                
                     cube.y =
-                        player.y -
-                        (cube.size +
-                        (player.size ||
-                        cube.size)) / 2;
+                        player.y - (cube.size + otherSize) / 2;
                 
-                    cube.vy =
-                        -Math.abs(cube.vy);
+                    cube.vy = -averageSpeedY;
                 
                 } else {
-                
                     cube.y =
-                        player.y +
-                        (cube.size +
-                        (player.size ||
-                        cube.size)) / 2;
+                        player.y + (cube.size + otherSize) / 2;
                 
-                    cube.vy =
-                        Math.abs(cube.vy);
+                    cube.vy = averageSpeedY;
                 }
             }
         }
