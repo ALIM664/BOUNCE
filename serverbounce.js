@@ -32,6 +32,95 @@ app.use(express.urlencoded({ extended: true }));
 ===================================================== */
 
 const players = Object.create(null);
+const collisionCooldowns = new Map();
+
+/* =====================================================
+   СИНХРОНИЗАЦИЯ ОТСКОКА МЕЖДУ ИГРОКАМИ
+===================================================== */
+
+socket.on("player:collision", data => {
+
+    if (!data || typeof data !== "object") {
+        return;
+    }
+
+    const targetId = data.targetId;
+
+    if (typeof targetId !== "string" ||
+        targetId === socket.id) {
+        return;
+    }
+
+    const self = players[socket.id];
+    const target = players[targetId];
+
+    if (!self || !target) {
+        return;
+    }
+
+    /*
+       Не принимаем повторное событие
+       одного и того же столкновения слишком часто.
+    */
+
+    const now = Date.now();
+
+    const pairKey = [socket.id, targetId]
+        .sort()
+        .join("|");
+
+    const lastCollision = collisionCooldowns.get(pairKey) || 0;
+
+    if (now - lastCollision < 100) {
+        return;
+    }
+
+    collisionCooldowns.set(pairKey, now);
+
+    /*
+       Ограничиваем скорости допустимым диапазоном.
+    */
+
+    const clampVelocity = value => {
+        const number = Number(value);
+
+        if (!Number.isFinite(number)) {
+            return 0;
+        }
+
+        return Math.max(-100, Math.min(100, number));
+    };
+
+    self.vx = clampVelocity(data.selfVx);
+    self.vy = clampVelocity(data.selfVy);
+
+    target.vx = clampVelocity(data.targetVx);
+    target.vy = clampVelocity(data.targetVy);
+
+    /*
+       Отправляем каждому игроку его собственную скорость.
+    */
+
+    io.to(socket.id).emit("player:bounce", {
+        vx: self.vx,
+        vy: self.vy
+    });
+
+    io.to(targetId).emit("player:bounce", {
+        vx: target.vx,
+        vy: target.vy
+    });
+
+    // Остальным клиентам тоже сообщаем об изменении скоростей.
+    io.emit("players:update", players);
+
+    // Удаляем старые записи, чтобы Map не рос бесконечно.
+    for (const [key, timestamp] of collisionCooldowns) {
+        if (now - timestamp > 10000) {
+            collisionCooldowns.delete(key);
+        }
+    }
+});
 
 function sanitizePixels(pixels) {
     if (!Array.isArray(pixels) || pixels.length !== 8) {
