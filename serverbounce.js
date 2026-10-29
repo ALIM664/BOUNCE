@@ -28,99 +28,30 @@ app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true }));
 
 /* =====================================================
-   ИГРОКИ
+   ИГРОКИ И СТОЛКНОВЕНИЯ
 ===================================================== */
 
 const players = Object.create(null);
 const collisionCooldowns = new Map();
 
+const MAX_VELOCITY = 100;
+
+function clampVelocity(value) {
+    const number = Number(value);
+
+    if (!Number.isFinite(number)) {
+        return 0;
+    }
+
+    return Math.max(
+        -MAX_VELOCITY,
+        Math.min(MAX_VELOCITY, number)
+    );
+}
+
 /* =====================================================
-   СИНХРОНИЗАЦИЯ ОТСКОКА МЕЖДУ ИГРОКАМИ
+   ПРОВЕРКА И СОХРАНЕНИЕ ПИКСЕЛЕЙ КУБА
 ===================================================== */
-
-socket.on("player:collision", data => {
-
-    if (!data || typeof data !== "object") {
-        return;
-    }
-
-    const targetId = data.targetId;
-
-    if (typeof targetId !== "string" ||
-        targetId === socket.id) {
-        return;
-    }
-
-    const self = players[socket.id];
-    const target = players[targetId];
-
-    if (!self || !target) {
-        return;
-    }
-
-    /*
-       Не принимаем повторное событие
-       одного и того же столкновения слишком часто.
-    */
-
-    const now = Date.now();
-
-    const pairKey = [socket.id, targetId]
-        .sort()
-        .join("|");
-
-    const lastCollision = collisionCooldowns.get(pairKey) || 0;
-
-    if (now - lastCollision < 100) {
-        return;
-    }
-
-    collisionCooldowns.set(pairKey, now);
-
-    /*
-       Ограничиваем скорости допустимым диапазоном.
-    */
-
-    const clampVelocity = value => {
-        const number = Number(value);
-
-        if (!Number.isFinite(number)) {
-            return 0;
-        }
-
-        return Math.max(-100, Math.min(100, number));
-    };
-
-    self.vx = clampVelocity(data.selfVx);
-    self.vy = clampVelocity(data.selfVy);
-
-    target.vx = clampVelocity(data.targetVx);
-    target.vy = clampVelocity(data.targetVy);
-
-    /*
-       Отправляем каждому игроку его собственную скорость.
-    */
-
-    io.to(socket.id).emit("player:bounce", {
-        vx: self.vx,
-        vy: self.vy
-    });
-
-    io.to(targetId).emit("player:bounce", {
-        vx: target.vx,
-        vy: target.vy
-    });
-
-    // Остальным клиентам тоже сообщаем об изменении скоростей.
-    io.emit("players:update", players);
-
-    // Удаляем старые записи, чтобы Map не рос бесконечно.
-    for (const [key, timestamp] of collisionCooldowns) {
-        if (now - timestamp > 10000) {
-            collisionCooldowns.delete(key);
-        }
-    }
-});
 
 function sanitizePixels(pixels) {
     if (!Array.isArray(pixels) || pixels.length !== 8) {
@@ -130,7 +61,10 @@ function sanitizePixels(pixels) {
     const result = [];
 
     for (let y = 0; y < 8; y++) {
-        if (!Array.isArray(pixels[y]) || pixels[y].length !== 8) {
+        if (
+            !Array.isArray(pixels[y]) ||
+            pixels[y].length !== 8
+        ) {
             return null;
         }
 
@@ -180,23 +114,28 @@ io.on("connection", socket => {
 
     players[socket.id] = {
         id: socket.id,
+
         x: 200,
         y: 250,
 
-        // Скорости игрока по X и Y.
+        // Скорость по горизонтали и вертикали.
         vx: 0,
         vy: 0,
 
         size: 64,
         nickname: "Игрок",
         pixels: null,
+
         lastMoveAt: Date.now()
     };
 
+    // Отправляем актуальных игроков.
     socket.emit("players:update", players);
     io.emit("players:update", players);
 
-    /* ИМЯ ИГРОКА */
+    /* =================================================
+       ИМЯ ИГРОКА
+    ================================================= */
 
     socket.on("player:name", name => {
         if (typeof name !== "string") {
@@ -222,7 +161,11 @@ io.on("connection", socket => {
     socket.on("player:move", data => {
         const player = players[socket.id];
 
-        if (!player || !data || typeof data !== "object") {
+        if (
+            !player ||
+            !data ||
+            typeof data !== "object"
+        ) {
             return;
         }
 
@@ -244,7 +187,11 @@ io.on("connection", socket => {
         const x = Number(data.x);
         const y = Number(data.y);
 
-        if (Number.isFinite(x) && Number.isFinite(y)) {
+        // Обновляем координаты.
+        if (
+            Number.isFinite(x) &&
+            Number.isFinite(y)
+        ) {
             player.x = Math.max(
                 -100000,
                 Math.min(100000, x)
@@ -256,23 +203,17 @@ io.on("connection", socket => {
             );
         }
 
-        const velocityLimit = 100;
-
-        const clampVelocity = value =>
-            Math.max(
-                -velocityLimit,
-                Math.min(velocityLimit, value)
-            );
-
+        // Если клиент передал скорость, используем её.
+        // Иначе оцениваем скорость по изменению координат.
         const incomingVx = Number(data.vx);
         const incomingVy = Number(data.vy);
 
-        // Используем скорость из игровой физики.
-        // Если клиент её не передал — измеряем по координатам.
         if (Number.isFinite(incomingVx)) {
             player.vx = clampVelocity(incomingVx);
-
-        } else if (Number.isFinite(x) && elapsedMs > 0) {
+        } else if (
+            Number.isFinite(x) &&
+            elapsedMs > 0
+        ) {
             player.vx = clampVelocity(
                 (player.x - previousX) / elapsedFrames
             );
@@ -280,8 +221,10 @@ io.on("connection", socket => {
 
         if (Number.isFinite(incomingVy)) {
             player.vy = clampVelocity(incomingVy);
-
-        } else if (Number.isFinite(y) && elapsedMs > 0) {
+        } else if (
+            Number.isFinite(y) &&
+            elapsedMs > 0
+        ) {
             player.vy = clampVelocity(
                 (player.y - previousY) / elapsedFrames
             );
@@ -289,17 +232,20 @@ io.on("connection", socket => {
 
         player.lastMoveAt = now;
 
+        // Обновляем ник.
         if (typeof data.nickname === "string") {
             player.nickname =
                 data.nickname.trim().slice(0, 20) || "Игрок";
         }
 
+        // Сохраняем пиксельный куб.
         const cleanPixels = sanitizePixels(data.pixels);
 
         if (cleanPixels) {
             player.pixels = cleanPixels;
         }
 
+        // Обновляем размер куба.
         const size = Number(data.size);
 
         if (Number.isFinite(size)) {
@@ -309,11 +255,89 @@ io.on("connection", socket => {
             );
         }
 
-        // Все клиенты получают позиции и скорости.
         io.emit("players:update", players);
     });
 
-    /* ЧАТ */
+    /* =================================================
+       СИНХРОНИЗАЦИЯ ОТСКОКА
+       ВАЖНО: обработчик находится внутри connection.
+    ================================================= */
+
+    socket.on("player:collision", data => {
+        if (
+            !data ||
+            typeof data !== "object"
+        ) {
+            return;
+        }
+
+        const targetId = data.targetId;
+
+        if (
+            typeof targetId !== "string" ||
+            targetId === socket.id
+        ) {
+            return;
+        }
+
+        const self = players[socket.id];
+        const target = players[targetId];
+
+        if (!self || !target) {
+            return;
+        }
+
+        // Не допускаем слишком частые повторные события
+        // одного и того же столкновения.
+        const now = Date.now();
+
+        const pairKey = [
+            socket.id,
+            targetId
+        ].sort().join("|");
+
+        const lastCollision =
+            collisionCooldowns.get(pairKey) || 0;
+
+        if (now - lastCollision < 100) {
+            return;
+        }
+
+        collisionCooldowns.set(pairKey, now);
+
+        // Принимаем рассчитанные клиентом скорости.
+        self.vx = clampVelocity(data.selfVx);
+        self.vy = clampVelocity(data.selfVy);
+
+        target.vx = clampVelocity(data.targetVx);
+        target.vy = clampVelocity(data.targetVy);
+
+        // Отправляем скорость первому игроку.
+        io.to(socket.id).emit("player:bounce", {
+            vx: self.vx,
+            vy: self.vy
+        });
+
+        // Отправляем скорость второму игроку.
+        io.to(targetId).emit("player:bounce", {
+            vx: target.vx,
+            vy: target.vy
+        });
+
+        // Остальные клиенты также получают обновление.
+        io.emit("players:update", players);
+
+        // Очищаем старые записи.
+        for (const [key, timestamp] of collisionCooldowns) {
+            if (now - timestamp > 10000) {
+                collisionCooldowns.delete(key);
+            }
+        }
+    });
+
+    /* =================================================
+       CHAT
+    ================================================= */
 
     socket.on("chat:message", message => {
         if (typeof message !== "string") {
@@ -327,16 +351,27 @@ io.on("connection", socket => {
         }
 
         io.emit("chat:message", {
-            username: players[socket.id]?.nickname || "Игрок",
+            username:
+                players[socket.id]?.nickname || "Игрок",
+
             message: cleanMessage,
             time: Date.now()
         });
     });
 
-    /* ОТКЛЮЧЕНИЕ */
+    /* =================================================
+       ОТКЛЮЧЕНИЕ ИГРОКА
+    ================================================= */
 
     socket.on("disconnect", reason => {
         delete players[socket.id];
+
+        // Удаляем таймеры столкновений с отключившимся игроком.
+        for (const key of collisionCooldowns.keys()) {
+            if (key.split("|").includes(socket.id)) {
+                collisionCooldowns.delete(key);
+            }
+        }
 
         io.emit("player:left", socket.id);
         io.emit("players:update", players);
@@ -364,15 +399,21 @@ app.get("/api/players", (req, res) => {
         return !search || nickname.includes(search);
     });
 
-    res.json(result.map(player => ({
-        nickname: player.nickname || "Игрок",
-        x: player.x,
-        y: player.y,
-        vx: player.vx,
-        vy: player.vy,
-        size: player.size,
-        pixels: player.pixels
-    })));
+    // Не показываем ID в публичном API поиска.
+    res.json(
+        result.map(player => ({
+            nickname: player.nickname || "Игрок",
+
+            x: player.x,
+            y: player.y,
+
+            vx: player.vx,
+            vy: player.vy,
+
+            size: player.size,
+            pixels: player.pixels
+        }))
+    );
 });
 
 /* =====================================================
@@ -381,19 +422,28 @@ app.get("/api/players", (req, res) => {
 
 app.use(express.static(__dirname));
 
+/* =====================================================
+   ГЛАВНАЯ СТРАНИЦА
+===================================================== */
+
 app.get("/", (req, res) => {
-    const htmlPath = path.join(__dirname, "BOUNCE.html");
+    const htmlPath = path.join(
+        __dirname,
+        "BOUNCE.html"
+    );
 
     if (!fs.existsSync(htmlPath)) {
         return res.status(500).send(
-            "Не найден файл BOUNCE.html рядом с server.js"
+            "Не найден файл BOUNCE.html рядом с сервером."
         );
     }
 
     res.sendFile(htmlPath);
 });
 
-/* FALLBACK */
+/* =====================================================
+   FALLBACK
+===================================================== */
 
 app.use((req, res, next) => {
     if (req.method !== "GET") {
@@ -424,7 +474,6 @@ server.listen(PORT, () => {
     console.log("================================");
     console.log(" BOUNCE SERVER ЗАПУЩЕН");
     console.log(` PORT: ${PORT}`);
-    console.log(` URL: http://localhost:${PORT}`);
     console.log(" PLAYERS: ONLINE");
     console.log("================================");
 });
