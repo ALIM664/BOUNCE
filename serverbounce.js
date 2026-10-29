@@ -9,6 +9,9 @@ const fs = require("fs");
 ===================================================== */
 
 const PORT = process.env.PORT || 3000;
+const MIN_LEVEL = 1;
+const MAX_LEVEL = 5;
+const MAX_VELOCITY = 100;
 
 const app = express();
 const server = http.createServer(app);
@@ -20,21 +23,31 @@ const io = new Server(server, {
     }
 });
 
-/* =====================================================
-   MIDDLEWARE
-===================================================== */
-
 app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true }));
 
 /* =====================================================
-   ИГРОКИ И СТОЛКНОВЕНИЯ
+   СОСТОЯНИЕ ИГРОКОВ
 ===================================================== */
 
 const players = Object.create(null);
 const collisionCooldowns = new Map();
 
-const MAX_VELOCITY = 100;
+function isValidLevel(value) {
+    const level = Number(value);
+    return Number.isInteger(level) &&
+        level >= MIN_LEVEL &&
+        level <= MAX_LEVEL;
+}
+
+function normalizeLevel(value) {
+    const level = Number(value);
+    return isValidLevel(level) ? level : MIN_LEVEL;
+}
+
+function levelRoom(level) {
+    return `level:${normalizeLevel(level)}`;
+}
 
 function clampVelocity(value) {
     const number = Number(value);
@@ -49,8 +62,54 @@ function clampVelocity(value) {
     );
 }
 
+/*
+   Возвращает только игроков выбранного уровня.
+*/
+
+function snapshotForLevel(level) {
+    const result = Object.create(null);
+
+    for (const [id, player] of Object.entries(players)) {
+        if (player.level === level) {
+            result[id] = { ...player };
+        }
+    }
+
+    return result;
+}
+
+/*
+   Отправляет состояние только игрокам этой карты.
+*/
+
+function broadcastLevel(level) {
+    if (!isValidLevel(level)) {
+        return;
+    }
+
+    io.to(levelRoom(level)).emit(
+        "players:update",
+        snapshotForLevel(Number(level))
+    );
+}
+
+/*
+   Системное сообщение чата для всех игроков.
+*/
+
+function systemMessage(message) {
+    io.emit("chat:message", {
+        type: "system",
+        username: "сервер",
+        message: String(message).slice(0, 250),
+        time: Date.now()
+    });
+
+    console.log(`[SYSTEM] ${message}`);
+}
+
 /* =====================================================
-   ПРОВЕРКА И СОХРАНЕНИЕ ПИКСЕЛЕЙ КУБА
+   ПРОВЕРКА ПИКСЕЛЕЙ КУБА
 ===================================================== */
 
 function sanitizePixels(pixels) {
@@ -106,19 +165,66 @@ function sanitizePixels(pixels) {
 }
 
 /* =====================================================
+   СМЕНА УРОВНЯ / КОМНАТЫ
+===================================================== */
+
+function movePlayerToLevel(socket, levelValue) {
+    const player = players[socket.id];
+
+    if (!player || !isValidLevel(levelValue)) {
+        return;
+    }
+
+    const newLevel = Number(levelValue);
+    const oldLevel = player.level;
+
+    if (newLevel === oldLevel) {
+        socket.join(levelRoom(newLevel));
+
+        socket.emit(
+            "players:update",
+            snapshotForLevel(newLevel)
+        );
+
+        return;
+    }
+
+    // Выводим игрока из предыдущей комнаты.
+    socket.leave(levelRoom(oldLevel));
+
+    player.level = newLevel;
+
+    // Добавляем игрока в новую комнату.
+    socket.join(levelRoom(newLevel));
+
+    // Обновляем список на старой карте.
+    broadcastLevel(oldLevel);
+
+    // Отправляем список игроков новой карты.
+    socket.emit(
+        "players:update",
+        snapshotForLevel(newLevel)
+    );
+
+    broadcastLevel(newLevel);
+}
+
+/* =====================================================
    SOCKET.IO
 ===================================================== */
 
 io.on("connection", socket => {
-    console.log(`Игрок подключён: ${socket.id}`);
+    const initialLevel = MIN_LEVEL;
+
+    socket.join(levelRoom(initialLevel));
 
     players[socket.id] = {
         id: socket.id,
+        level: initialLevel,
 
         x: 200,
         y: 250,
 
-        // Скорость по горизонтали и вертикали.
         vx: 0,
         vy: 0,
 
@@ -126,37 +232,65 @@ io.on("connection", socket => {
         nickname: "Игрок",
         pixels: null,
 
-        lastMoveAt: Date.now()
+        lastMoveAt: Date.now(),
+        lastChatAt: 0,
+        lastDeathNoticeAt: 0,
+
+        joinAnnounced: false
     };
 
-    // Отправляем актуальных игроков.
-    socket.emit("players:update", players);
-    io.emit("players:update", players);
+    socket.emit(
+        "players:update",
+        snapshotForLevel(initialLevel)
+    );
 
-    /* =================================================
+    broadcastLevel(initialLevel);
+
+    console.log(`Игрок подключился: ${socket.id}`);
+
+    /* ================================================
        ИМЯ ИГРОКА
-    ================================================= */
+    ================================================ */
 
     socket.on("player:name", name => {
-        if (typeof name !== "string") {
-            return;
-        }
-
         const player = players[socket.id];
 
-        if (!player) {
+        if (!player || typeof name !== "string") {
             return;
         }
 
-        player.nickname =
+        const cleanName =
             name.trim().slice(0, 20) || "Игрок";
 
-        io.emit("players:update", players);
+        player.nickname = cleanName;
+
+        // Приветствуем игрока только один раз за подключение.
+        if (!player.joinAnnounced) {
+            player.joinAnnounced = true;
+
+            systemMessage(
+                `игрок "${cleanName}" присоединился к игре`
+            );
+        }
+
+        broadcastLevel(player.level);
     });
 
-    /* =================================================
-       ПОЗИЦИЯ И СКОРОСТЬ ИГРОКА
-    ================================================= */
+    /* ================================================
+       ВЫБОР / СМЕНА КАРТЫ
+    ================================================ */
+
+    socket.on("player:level", level => {
+        if (!isValidLevel(level)) {
+            return;
+        }
+
+        movePlayerToLevel(socket, Number(level));
+    });
+
+    /* ================================================
+       ПОЗИЦИЯ, СКОРОСТЬ И РИСУНОК КУБА
+    ================================================ */
 
     socket.on("player:move", data => {
         const player = players[socket.id];
@@ -167,6 +301,15 @@ io.on("connection", socket => {
             typeof data !== "object"
         ) {
             return;
+        }
+
+        // Обновляем уровень, если клиент передал новый.
+        if (
+            data.level != null &&
+            isValidLevel(data.level) &&
+            Number(data.level) !== player.level
+        ) {
+            movePlayerToLevel(socket, Number(data.level));
         }
 
         const previousX = player.x;
@@ -187,7 +330,6 @@ io.on("connection", socket => {
         const x = Number(data.x);
         const y = Number(data.y);
 
-        // Обновляем координаты.
         if (
             Number.isFinite(x) &&
             Number.isFinite(y)
@@ -203,8 +345,6 @@ io.on("connection", socket => {
             );
         }
 
-        // Если клиент передал скорость, используем её.
-        // Иначе оцениваем скорость по изменению координат.
         const incomingVx = Number(data.vx);
         const incomingVy = Number(data.vy);
 
@@ -232,20 +372,17 @@ io.on("connection", socket => {
 
         player.lastMoveAt = now;
 
-        // Обновляем ник.
         if (typeof data.nickname === "string") {
             player.nickname =
                 data.nickname.trim().slice(0, 20) || "Игрок";
         }
 
-        // Сохраняем пиксельный куб.
         const cleanPixels = sanitizePixels(data.pixels);
 
         if (cleanPixels) {
             player.pixels = cleanPixels;
         }
 
-        // Обновляем размер куба.
         const size = Number(data.size);
 
         if (Number.isFinite(size)) {
@@ -255,19 +392,16 @@ io.on("connection", socket => {
             );
         }
 
-        io.emit("players:update", players);
+        // Обновление отправляется только в комнату текущей карты.
+        broadcastLevel(player.level);
     });
 
-    /* =================================================
+    /* ================================================
        СИНХРОНИЗАЦИЯ ОТСКОКА
-       ВАЖНО: обработчик находится внутри connection.
-    ================================================= */
+    ================================================ */
 
     socket.on("player:collision", data => {
-        if (
-            !data ||
-            typeof data !== "object"
-        ) {
+        if (!data || typeof data !== "object") {
             return;
         }
 
@@ -283,12 +417,15 @@ io.on("connection", socket => {
         const self = players[socket.id];
         const target = players[targetId];
 
-        if (!self || !target) {
+        // Запрещаем столкновения между разными картами.
+        if (
+            !self ||
+            !target ||
+            self.level !== target.level
+        ) {
             return;
         }
 
-        // Не допускаем слишком частые повторные события
-        // одного и того же столкновения.
         const now = Date.now();
 
         const pairKey = [
@@ -305,29 +442,25 @@ io.on("connection", socket => {
 
         collisionCooldowns.set(pairKey, now);
 
-        // Принимаем рассчитанные клиентом скорости.
         self.vx = clampVelocity(data.selfVx);
         self.vy = clampVelocity(data.selfVy);
 
         target.vx = clampVelocity(data.targetVx);
         target.vy = clampVelocity(data.targetVy);
 
-        // Отправляем скорость первому игроку.
         io.to(socket.id).emit("player:bounce", {
             vx: self.vx,
             vy: self.vy
         });
 
-        // Отправляем скорость второму игроку.
         io.to(targetId).emit("player:bounce", {
             vx: target.vx,
             vy: target.vy
         });
 
-        // Остальные клиенты также получают обновление.
-        io.emit("players:update", players);
+        broadcastLevel(self.level);
 
-        // Очищаем старые записи.
+        // Очищаем старые блокировки столкновений.
         for (const [key, timestamp] of collisionCooldowns) {
             if (now - timestamp > 10000) {
                 collisionCooldowns.delete(key);
@@ -335,63 +468,151 @@ io.on("connection", socket => {
         }
     });
 
-    /* =================================================
-       CHAT
-    ================================================= */
+    /* ================================================
+       ОБЫЧНЫЙ ЧАТ
+       Чат общий для всех уровней.
+    ================================================ */
 
     socket.on("chat:message", message => {
-        if (typeof message !== "string") {
+        const player = players[socket.id];
+
+        if (
+            !player ||
+            typeof message !== "string"
+        ) {
             return;
         }
 
-        const cleanMessage = message.trim().slice(0, 200);
+        const cleanMessage =
+            message.trim().slice(0, 200);
 
         if (!cleanMessage) {
             return;
         }
 
-        io.emit("chat:message", {
-            username:
-                players[socket.id]?.nickname || "Игрок",
+        const now = Date.now();
 
+        // Защита от слишком частой отправки сообщений.
+        if (now - player.lastChatAt < 400) {
+            return;
+        }
+
+        player.lastChatAt = now;
+
+        io.emit("chat:message", {
+            type: "chat",
+            username: player.nickname || "Игрок",
             message: cleanMessage,
-            time: Date.now()
+            time: now
         });
     });
 
-    /* =================================================
+    /* ================================================
+       СИСТЕМНЫЕ СООБЩЕНИЯ О СМЕРТИ
+    ================================================ */
+
+    socket.on("player:died", data => {
+        const player = players[socket.id];
+
+        if (
+            !player ||
+            !data ||
+            typeof data !== "object"
+        ) {
+            return;
+        }
+
+        const reason = data.reason;
+
+        if (
+            reason !== "fall" &&
+            reason !== "spikes"
+        ) {
+            return;
+        }
+
+        const now = Date.now();
+
+        if (now - player.lastDeathNoticeAt < 1000) {
+            return;
+        }
+
+        player.lastDeathNoticeAt = now;
+
+        const nickname = String(
+            player.nickname || "Игрок"
+        ).trim().slice(0, 20);
+
+        if (reason === "fall") {
+            systemMessage(
+                `игрок "${nickname}" вылетел за карту`
+            );
+        } else {
+            systemMessage(
+                `игрок "${nickname}" влетел в шипы`
+            );
+        }
+    });
+
+    /* ================================================
        ОТКЛЮЧЕНИЕ ИГРОКА
-    ================================================= */
+    ================================================ */
 
     socket.on("disconnect", reason => {
+        const player = players[socket.id];
+
+        if (!player) {
+            return;
+        }
+
+        const oldLevel = player.level;
+
+        const nickname = String(
+            player.nickname || "Игрок"
+        ).trim().slice(0, 20);
+
+        const shouldAnnounceLeave =
+            player.joinAnnounced;
+
         delete players[socket.id];
 
-        // Удаляем таймеры столкновений с отключившимся игроком.
-        for (const key of collisionCooldowns.keys()) {
+        // Игрок пропадёт из списка только на своей карте.
+        broadcastLevel(oldLevel);
+
+        for (const [key] of collisionCooldowns) {
             if (key.split("|").includes(socket.id)) {
                 collisionCooldowns.delete(key);
             }
         }
 
-        io.emit("player:left", socket.id);
-        io.emit("players:update", players);
+        if (shouldAnnounceLeave) {
+            systemMessage(
+                `игрок "${nickname}" вышел из игры`
+            );
+        }
 
         console.log(
-            `Игрок отключён: ${socket.id} (${reason})`
+            `Игрок отключился: ${socket.id} (${reason})`
         );
     });
 });
 
 /* =====================================================
-   API ИГРОКОВ — ПОИСК ПО НИКУ
+   ПОИСК ИГРОКОВ ТОЛЬКО НА ВЫБРАННОЙ КАРТЕ
 ===================================================== */
 
 app.get("/api/players", (req, res) => {
-    const search = String(req.query.search || "")
-        .trim()
-        .toLocaleLowerCase();
+    const search = String(
+        req.query.search || ""
+    ).trim().toLocaleLowerCase();
+
+    const level = normalizeLevel(req.query.level);
 
     const result = Object.values(players).filter(player => {
+        if (player.level !== level) {
+            return false;
+        }
+
         const nickname = String(
             player.nickname || "Игрок"
         ).toLocaleLowerCase();
@@ -399,21 +620,19 @@ app.get("/api/players", (req, res) => {
         return !search || nickname.includes(search);
     });
 
-    // Не показываем ID в публичном API поиска.
-    res.json(
-        result.map(player => ({
-            nickname: player.nickname || "Игрок",
+    res.json(result.map(player => ({
+        nickname: player.nickname || "Игрок",
+        level: player.level,
 
-            x: player.x,
-            y: player.y,
+        x: player.x,
+        y: player.y,
 
-            vx: player.vx,
-            vy: player.vy,
+        vx: player.vx,
+        vy: player.vy,
 
-            size: player.size,
-            pixels: player.pixels
-        }))
-    );
+        size: player.size,
+        pixels: player.pixels
+    })));
 });
 
 /* =====================================================
@@ -421,10 +640,6 @@ app.get("/api/players", (req, res) => {
 ===================================================== */
 
 app.use(express.static(__dirname));
-
-/* =====================================================
-   ГЛАВНАЯ СТРАНИЦА
-===================================================== */
 
 app.get("/", (req, res) => {
     const htmlPath = path.join(
