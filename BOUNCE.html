@@ -1153,6 +1153,24 @@ socket.on("players:update", serverPlayers => {
     }
 });
 
+/* =====================================================
+   ПОЛУЧЕНИЕ ОТСКОКА ОТ СЕРВЕРА
+===================================================== */
+
+socket.on("player:bounce", data => {
+    if (!data || typeof data !== "object") {
+        return;
+    }
+
+    if (Number.isFinite(data.vx)) {
+        cube.vx = data.vx;
+    }
+
+    if (Number.isFinite(data.vy)) {
+        cube.vy = data.vy;
+    }
+});
+
 socket.on(
     "player:left",
     playerId => {
@@ -1191,6 +1209,9 @@ let playersVisible =
 */
 
 const players = {};
+
+// Защита от повторной отправки одного столкновения.
+const lastCollisionSentAt = new Map();
 
 
 /*
@@ -3817,26 +3838,35 @@ function update() {
     }
     /*
        Коллизия с другими игроками.
+       Оба игрока получают противоположные скорости.
     */
+    
     if (playersVisible) {
-
+        
         for (const id in players) {
         
-            // Не сталкиваемся со своим кубом.
             if (id === socket.id) {
                 continue;
             }
         
             const player = players[id];
         
-            if (!isCollidingWithPlayer(player)) {
+            if (!player || !isCollidingWithPlayer(player)) {
                 continue;
             }
         
-            const dx = cube.x - player.x;
-            const dy = cube.y - player.y;
+            const otherX = Number(player.x);
+            const otherY = Number(player.y);
         
-            // Скорости второго игрока.
+            if (!Number.isFinite(otherX) ||
+                !Number.isFinite(otherY)) {
+                continue;
+            }
+        
+            const otherSize = Number(player.size) > 0
+                ? Number(player.size)
+                : cube.size;
+        
             const otherVx = Number.isFinite(Number(player.vx))
                 ? Number(player.vx)
                 : 0;
@@ -3845,49 +3875,81 @@ function update() {
                 ? Number(player.vy)
                 : 0;
         
-            // Среднее значение модулей скоростей по каждой оси.
-            const averageSpeedX =
-                (Math.abs(cube.vx) + Math.abs(otherVx)) / 2;
+            const dx = cube.x - otherX;
+            const dy = cube.y - otherY;
         
-            const averageSpeedY =
-                (Math.abs(cube.vy) + Math.abs(otherVy)) / 2;
+            const halfWidth = (cube.size + otherSize) / 2;
         
-            const otherSize = Number(player.size) > 0
-                ? Number(player.size)
-                : cube.size;
+            const overlapX = halfWidth - Math.abs(dx);
+            const overlapY = halfWidth - Math.abs(dy);
         
-            // Выбираем ось, по которой произошло столкновение.
-            if (Math.abs(dx) > Math.abs(dy)) {
+            let targetVx = otherVx;
+            let targetVy = otherVy;
+        
+            /*
+               Горизонтальное столкновение.
+            */
+        
+            if (overlapX <= overlapY) {
             
-                // Горизонтальное столкновение.
-                if (dx < 0) {
-                    cube.x =
-                        player.x - (cube.size + otherSize) / 2;
-                
-                    cube.vx = -averageSpeedX;
-                
-                } else {
-                    cube.x =
-                        player.x + (cube.size + otherSize) / 2;
-                
-                    cube.vx = averageSpeedX;
-                }
+                const direction = dx === 0
+                    ? (String(socket.id).localeCompare(String(id)) < 0
+                        ? -1
+                        : 1)
+                    : Math.sign(dx);
+            
+                const averageSpeed =
+                    (Math.abs(cube.vx) + Math.abs(otherVx)) / 2;
+            
+                // Раздвигаем кубы.
+                cube.x = otherX + direction * halfWidth;
+            
+                // Скорости обоих кубов направлены наружу.
+                cube.vx = direction * averageSpeed;
+                targetVx = -direction * averageSpeed;
             
             } else {
             
-                // Вертикальное столкновение.
-                if (dy < 0) {
-                    cube.y =
-                        player.y - (cube.size + otherSize) / 2;
+                /*
+                   Вертикальное столкновение.
+                */
+            
+                const direction = dy === 0
+                    ? (String(socket.id).localeCompare(String(id)) < 0
+                        ? -1
+                        : 1)
+                    : Math.sign(dy);
+            
+                const averageSpeed =
+                    (Math.abs(cube.vy) + Math.abs(otherVy)) / 2;
+            
+                // Раздвигаем кубы.
+                cube.y = otherY + direction * halfWidth;
+            
+                cube.vy = direction * averageSpeed;
+                targetVy = -direction * averageSpeed;
+            }
+        
+            /*
+               Передаём результат столкновения второму игроку.
+            */
+        
+            const now = performance.now();
+            const lastSent = lastCollisionSentAt.get(id) || 0;
+        
+            if (now - lastSent >= 120) {
+            
+                lastCollisionSentAt.set(id, now);
+            
+                socket.emit("player:collision", {
+                    targetId: id,
                 
-                    cube.vy = -averageSpeedY;
+                    selfVx: cube.vx,
+                    selfVy: cube.vy,
                 
-                } else {
-                    cube.y =
-                        player.y + (cube.size + otherSize) / 2;
-                
-                    cube.vy = averageSpeedY;
-                }
+                    targetVx,
+                    targetVy
+                });
             }
         }
     }
