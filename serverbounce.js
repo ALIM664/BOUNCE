@@ -7,7 +7,9 @@ const fs = require("fs");
 /* =====================================================
    НАСТРОЙКИ
 ===================================================== */
+
 const PORT = process.env.PORT || 3000;
+
 const app = express();
 const server = http.createServer(app);
 
@@ -21,12 +23,14 @@ const io = new Server(server, {
 /* =====================================================
    MIDDLEWARE
 ===================================================== */
+
 app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true }));
 
 /* =====================================================
    ИГРОКИ
 ===================================================== */
+
 const players = Object.create(null);
 
 function sanitizePixels(pixels) {
@@ -51,7 +55,7 @@ function sanitizePixels(pixels) {
                 continue;
             }
 
-            const channel = (value) => {
+            const channel = value => {
                 const n = Number(value);
 
                 return Number.isFinite(n)
@@ -80,51 +84,121 @@ function sanitizePixels(pixels) {
 
 /* =====================================================
    SOCKET.IO
-   ID используется только для внутренней синхронизации.
 ===================================================== */
-io.on("connection", (socket) => {
+
+io.on("connection", socket => {
     console.log(`Игрок подключён: ${socket.id}`);
 
     players[socket.id] = {
         id: socket.id,
         x: 200,
         y: 250,
+
+        // Скорости игрока по X и Y.
+        vx: 0,
+        vy: 0,
+
         size: 64,
         nickname: "Игрок",
-        pixels: null
+        pixels: null,
+        lastMoveAt: Date.now()
     };
 
     socket.emit("players:update", players);
     io.emit("players:update", players);
 
     /* ИМЯ ИГРОКА */
-    socket.on("player:name", (name) => {
-        if (typeof name !== "string") return;
 
-        const cleanName = name.trim().slice(0, 20) || "Игрок";
-
-        if (players[socket.id]) {
-            players[socket.id].nickname = cleanName;
+    socket.on("player:name", name => {
+        if (typeof name !== "string") {
+            return;
         }
+
+        const player = players[socket.id];
+
+        if (!player) {
+            return;
+        }
+
+        player.nickname =
+            name.trim().slice(0, 20) || "Игрок";
 
         io.emit("players:update", players);
     });
 
-    /* ПОЗИЦИЯ И СОСТОЯНИЕ ИГРОКА */
-    socket.on("player:move", (data) => {
+    /* =================================================
+       ПОЗИЦИЯ И СКОРОСТЬ ИГРОКА
+    ================================================= */
+
+    socket.on("player:move", data => {
         const player = players[socket.id];
 
         if (!player || !data || typeof data !== "object") {
             return;
         }
 
+        const previousX = player.x;
+        const previousY = player.y;
+
+        const now = Date.now();
+
+        const elapsedMs = Math.max(
+            0,
+            now - (player.lastMoveAt || now)
+        );
+
+        const elapsedFrames = Math.max(
+            elapsedMs / (1000 / 60),
+            1
+        );
+
         const x = Number(data.x);
         const y = Number(data.y);
 
         if (Number.isFinite(x) && Number.isFinite(y)) {
-            player.x = Math.max(-100000, Math.min(100000, x));
-            player.y = Math.max(-100000, Math.min(100000, y));
+            player.x = Math.max(
+                -100000,
+                Math.min(100000, x)
+            );
+
+            player.y = Math.max(
+                -100000,
+                Math.min(100000, y)
+            );
         }
+
+        const velocityLimit = 100;
+
+        const clampVelocity = value =>
+            Math.max(
+                -velocityLimit,
+                Math.min(velocityLimit, value)
+            );
+
+        const incomingVx = Number(data.vx);
+        const incomingVy = Number(data.vy);
+
+        // Используем скорость из игровой физики.
+        // Если клиент её не передал — измеряем по координатам.
+        if (Number.isFinite(incomingVx)) {
+            player.vx = clampVelocity(incomingVx);
+
+        } else if (Number.isFinite(x) && elapsedMs > 0) {
+            player.vx = clampVelocity(
+                (player.x - previousX) / elapsedFrames
+            );
+        }
+
+        if (Number.isFinite(incomingVy)) {
+            player.vy = clampVelocity(incomingVy);
+
+        } else if (Number.isFinite(y) && elapsedMs > 0) {
+            player.vy = clampVelocity(
+                (player.y - previousY) / elapsedFrames
+            );
+        }
+
+        player.lastMoveAt = now;
 
         if (typeof data.nickname === "string") {
             player.nickname =
@@ -140,19 +214,28 @@ io.on("connection", (socket) => {
         const size = Number(data.size);
 
         if (Number.isFinite(size)) {
-            player.size = Math.max(16, Math.min(256, size));
+            player.size = Math.max(
+                16,
+                Math.min(256, size)
+            );
         }
 
+        // Все клиенты получают позиции и скорости.
         io.emit("players:update", players);
     });
 
     /* ЧАТ */
-    socket.on("chat:message", (message) => {
-        if (typeof message !== "string") return;
+
+    socket.on("chat:message", message => {
+        if (typeof message !== "string") {
+            return;
+        }
 
         const cleanMessage = message.trim().slice(0, 200);
 
-        if (!cleanMessage) return;
+        if (!cleanMessage) {
+            return;
+        }
 
         io.emit("chat:message", {
             username: players[socket.id]?.nickname || "Игрок",
@@ -161,8 +244,9 @@ io.on("connection", (socket) => {
         });
     });
 
-    /* ОТКЛЮЧЕНИЕ ИГРОКА */
-    socket.on("disconnect", (reason) => {
+    /* ОТКЛЮЧЕНИЕ */
+
+    socket.on("disconnect", reason => {
         delete players[socket.id];
 
         io.emit("player:left", socket.id);
@@ -176,14 +260,14 @@ io.on("connection", (socket) => {
 
 /* =====================================================
    API ИГРОКОВ — ПОИСК ПО НИКУ
-   ID не возвращается в ответе этого API.
 ===================================================== */
+
 app.get("/api/players", (req, res) => {
     const search = String(req.query.search || "")
         .trim()
         .toLocaleLowerCase();
 
-    const result = Object.values(players).filter((player) => {
+    const result = Object.values(players).filter(player => {
         const nickname = String(
             player.nickname || "Игрок"
         ).toLocaleLowerCase();
@@ -191,23 +275,23 @@ app.get("/api/players", (req, res) => {
         return !search || nickname.includes(search);
     });
 
-    res.json(
-        result.map((player) => ({
-            nickname: player.nickname || "Игрок",
-            x: player.x,
-            y: player.y,
-            size: player.size,
-            pixels: player.pixels
-        }))
-    );
+    res.json(result.map(player => ({
+        nickname: player.nickname || "Игрок",
+        x: player.x,
+        y: player.y,
+        vx: player.vx,
+        vy: player.vy,
+        size: player.size,
+        pixels: player.pixels
+    })));
 });
 
 /* =====================================================
    СТАТИЧЕСКИЕ ФАЙЛЫ
 ===================================================== */
+
 app.use(express.static(__dirname));
 
-/* ГЛАВНАЯ СТРАНИЦА */
 app.get("/", (req, res) => {
     const htmlPath = path.join(__dirname, "BOUNCE.html");
 
@@ -221,6 +305,7 @@ app.get("/", (req, res) => {
 });
 
 /* FALLBACK */
+
 app.use((req, res, next) => {
     if (req.method !== "GET") {
         return next();
@@ -232,7 +317,8 @@ app.use((req, res, next) => {
 /* =====================================================
    ЗАПУСК СЕРВЕРА
 ===================================================== */
-server.on("error", (error) => {
+
+server.on("error", error => {
     console.error(
         "Не удалось запустить сервер:",
         error.message
@@ -240,7 +326,7 @@ server.on("error", (error) => {
 
     if (error.code === "EADDRINUSE") {
         console.error(
-            `Порт ${PORT} уже занят. Останови другой процесс или укажи другой PORT.`
+            `Порт ${PORT} уже занят.`
         );
     }
 });
