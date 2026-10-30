@@ -771,21 +771,14 @@ app.get("/api/players", (req, res) => {
     );
 
     const result = Object.values(players).filter(player => {
-        if (
-            !player.inGame ||
-            player.level !== level
-        ) {
-            return false;
-        }
-
+        // Ищем только игроков, выбравших эту карту.
+        if (player.level !== level) return false;
+    
         const nickname = String(
             player.nickname || "Игрок"
         ).toLocaleLowerCase();
-
-        return (
-            !search ||
-            nickname.includes(search)
-        );
+        
+        return !search || nickname.includes(search);
     });
 
     res.json(
