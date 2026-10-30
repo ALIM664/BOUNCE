@@ -1265,7 +1265,9 @@ socket.on("player:bounce", data => {
 });
 
 socket.on("players:update", serverPlayers => {
-    if (!serverPlayers || typeof serverPlayers !== "object") return;
+    if (!serverPlayers || typeof serverPlayers !== "object") {
+        return;
+    }
 
     const incomingPlayers = Array.isArray(serverPlayers)
         ? serverPlayers.filter(Boolean).map((player, index) => ({
@@ -1274,30 +1276,55 @@ socket.on("players:update", serverPlayers => {
         }))
         : Object.entries(serverPlayers)
             .filter(([, player]) => player && typeof player === "object")
-            .map(([id, player]) => ({ ...player, id: player.id ?? id }));
+            .map(([id, player]) => ({
+                ...player,
+                id: player.id ?? id
+            }));
 
-    // Сервер присылает только игроков текущего уровня.
-    // Полностью заменяем старый список, чтобы после смены карты
-    // игроки с предыдущей карты не оставались в памяти клиента.
-    for (const id of Object.keys(players)) delete players[id];
-    for (const player of incomingPlayers) {
+    // Дополнительная проверка текущего уровня.
+    const currentLevelPlayers = incomingPlayers.filter(player =>
+        Number(player.level) === Number(selectedLevel)
+    );
+
+    // Полностью очищаем старый список.
+    for (const id of Object.keys(players)) {
+        delete players[id];
+    }
+
+    // Добавляем только игроков текущей карты.
+    for (const player of currentLevelPlayers) {
         players[String(player.id)] = player;
     }
 
-    const directorySignature = JSON.stringify(
-        incomingPlayers.map(player => ({
-            id: player.id,
-            level: player.level,
-            nickname: String(player.nickname ?? player.username ?? player.name ?? "Игрок"),
-            pixels: player.pixels ?? player.cubePixels ?? null,
-            size: player.size ?? null
-        }))
-    );
+    // Обновляем карточки игроков только в игровом режиме.
+    const gameIsActive =
+        document.getElementById("gameScreen")
+            ?.classList.contains("active");
 
-    if (directorySignature !== lastPlayersDirectorySignature) {
-        lastPlayersDirectorySignature = directorySignature;
-        allPlayers = incomingPlayers;
-        if (playersList) renderPlayers(playerSearch?.value ?? "");
+    if (gameIsActive) {
+        const directorySignature = JSON.stringify(
+            currentLevelPlayers.map(player => ({
+                id: player.id,
+                level: player.level,
+                nickname: String(
+                    player.nickname ??
+                    player.username ??
+                    player.name ??
+                    "Игрок"
+                ),
+                pixels: player.pixels ?? player.cubePixels ?? null,
+                size: player.size ?? null
+            }))
+        );
+
+        if (directorySignature !== lastPlayersDirectorySignature) {
+            lastPlayersDirectorySignature = directorySignature;
+            allPlayers = currentLevelPlayers;
+
+            if (playersList) {
+                renderPlayers(playerSearch?.value ?? "");
+            }
+        }
     }
 });
 
@@ -2485,7 +2512,10 @@ document.getElementById("startButton")
     resizeGame();
 
 
-    socket.emit("player:level", selectedLevel);
+    socket.emit("player:enter-level", {
+        level: selectedLevel,
+        nickname: playerNickname
+    });
 
     loadLevel(
         selectedLevel
@@ -2505,6 +2535,8 @@ document.getElementById("startButton")
 function backToMenu() {
 
 stopLevelMusic();
+
+socket.emit("player:leave-level");
 
 
 gameScreen.classList.remove(
@@ -3840,9 +3872,24 @@ nicknameInput.addEventListener("change", () => {
 });
 
 socket.on("connect", () => {
-    socket.emit("player:name", playerNickname.trim() || "Игрок");
+    socket.emit(
+        "player:name",
+        playerNickname.trim() || "Игрок"
+    );
+
     syncPlayerAppearance();
-    // Список придёт через players:update; повторный HTTP-запрос не нужен.
+
+    // Если соединение восстановилось во время игры,
+    // снова входим на выбранный уровень.
+    if (
+        document.getElementById("gameScreen")
+            ?.classList.contains("active")
+    ) {
+        socket.emit("player:enter-level", {
+            level: selectedLevel,
+            nickname: playerNickname
+        });
+    }
 });
 
 
@@ -3892,6 +3939,7 @@ function update() {
 
     // Защита от огромного падения
     if (cube.y > 10000) {
+        reportPlayerDeath("fall");
         resetGame();
         return;
     }
@@ -3904,6 +3952,7 @@ function update() {
 
         // Шипы
         if (block.spikes) {
+            reportPlayerDeath("spikes");
             resetGame();
             return;
         }
@@ -4949,9 +4998,6 @@ function drawCube() {
 
     ctx.restore();
 }
-
-
-"16"
 
 /* =====================================================
    КООРДИНАТЫ
