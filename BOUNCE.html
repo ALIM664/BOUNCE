@@ -1442,26 +1442,39 @@ function syncPlayerPosition() {
 
 let allPlayers = [];
 let lastPlayersDirectorySignature = "";
+let playersRequestId = 0;
 
 const playerSearch = document.getElementById("playerSearch");
 const playerSearchButton = document.getElementById("playerSearchButton");
 const playersList = document.getElementById("playersList");
 
 async function loadPlayers(search = "") {
+    const requestId = ++playersRequestId;
+
     const query = String(search ?? "").trim();
+    const requestedLevel = Number(selectedLevel);
+
+    if (!playersList) return;
 
     playersList.innerHTML = `
-        <div class="players-loading">Загрузка игроков...</div>
+        <div class="players-loading">
+            Загрузка игроков...
+        </div>
     `;
 
     try {
         const response = await fetch(
-            "/api/players?level=" + encodeURIComponent(String(selectedLevel)) +
-            "&search=" + encodeURIComponent(query),
+            "/api/players?level=" +
+            encodeURIComponent(String(requestedLevel)) +
+            "&search=" +
+            encodeURIComponent(query),
             {
                 method: "GET",
                 credentials: "include",
-                headers: { Accept: "application/json" }
+                cache: "no-store",
+                headers: {
+                    Accept: "application/json"
+                }
             }
         );
 
@@ -1470,17 +1483,44 @@ async function loadPlayers(search = "") {
         }
 
         const data = await response.json();
-        allPlayers = Array.isArray(data)
+
+        // Игнорируем старые запросы.
+        if (requestId !== playersRequestId) return;
+
+        // Игнорируем ответы от предыдущей карты.
+        if (requestedLevel !== Number(selectedLevel)) return;
+
+        // Игнорируем ответы для старого поискового запроса.
+        if (
+            query !== String(playerSearch?.value ?? "").trim()
+        ) {
+            return;
+        }
+
+        const receivedPlayers = Array.isArray(data)
             ? data
             : Array.isArray(data?.players)
                 ? data.players
                 : [];
 
+        // Дополнительная проверка уровня.
+        allPlayers = receivedPlayers.filter(player =>
+            player &&
+            Number(player.level ?? requestedLevel) === requestedLevel
+        );
+
         renderPlayers(query);
+
     } catch (error) {
+        // Не показываем ошибку от устаревшего запроса.
+        if (requestId !== playersRequestId) return;
+
         console.error("PLAYERS ERROR:", error);
+
         playersList.innerHTML = `
-            <div class="players-empty">Не удалось загрузить игроков</div>
+            <div class="players-empty">
+                Не удалось загрузить игроков
+            </div>
         `;
     }
 }
