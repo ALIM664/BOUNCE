@@ -13,6 +13,14 @@ const MIN_LEVEL = 1;
 const MAX_LEVEL = 5;
 const MAX_VELOCITY = 100;
 
+const LEVEL_NAMES = {
+    1: "Tendo",
+    2: "Infiltration",
+    3: "Freaks",
+    4: "The Ghost",
+    5: "Into Pieces"
+};
+
 const app = express();
 const server = http.createServer(app);
 
@@ -35,26 +43,36 @@ const collisionCooldowns = new Map();
 
 function isValidLevel(value) {
     const level = Number(value);
-    return Number.isInteger(level) &&
+
+    return (
+        Number.isInteger(level) &&
         level >= MIN_LEVEL &&
-        level <= MAX_LEVEL;
+        level <= MAX_LEVEL
+    );
 }
 
 function normalizeLevel(value) {
     const level = Number(value);
-    return isValidLevel(level) ? level : MIN_LEVEL;
+
+    return isValidLevel(level)
+        ? level
+        : MIN_LEVEL;
 }
 
 function levelRoom(level) {
     return `level:${normalizeLevel(level)}`;
 }
 
+function levelName(level) {
+    return LEVEL_NAMES[normalizeLevel(level)] ||
+        `Level ${normalizeLevel(level)}`;
+}
+
 function clampVelocity(value) {
     const number = Number(value);
 
-    if (!Number.isFinite(number)) {
+    if (!Number.isFinite(number))
         return 0;
-    }
 
     return Math.max(
         -MAX_VELOCITY,
@@ -62,15 +80,18 @@ function clampVelocity(value) {
     );
 }
 
-/*
-   Возвращает только игроков выбранного уровня.
-*/
+/* =====================================================
+   СПИСОК ИГРОКОВ ОДНОГО УРОВНЯ
+===================================================== */
 
 function snapshotForLevel(level) {
     const result = Object.create(null);
 
     for (const [id, player] of Object.entries(players)) {
-        if (player.level === level) {
+        if (
+            player.inGame &&
+            player.level === level
+        ) {
             result[id] = { ...player };
         }
     }
@@ -78,14 +99,9 @@ function snapshotForLevel(level) {
     return result;
 }
 
-/*
-   Отправляет состояние только игрокам этой карты.
-*/
-
 function broadcastLevel(level) {
-    if (!isValidLevel(level)) {
+    if (!isValidLevel(level))
         return;
-    }
 
     io.to(levelRoom(level)).emit(
         "players:update",
@@ -93,9 +109,9 @@ function broadcastLevel(level) {
     );
 }
 
-/*
-   Системное сообщение чата для всех игроков.
-*/
+/* =====================================================
+   СИСТЕМНЫЕ СООБЩЕНИЯ
+===================================================== */
 
 function systemMessage(message) {
     io.emit("chat:message", {
@@ -108,12 +124,35 @@ function systemMessage(message) {
     console.log(`[SYSTEM] ${message}`);
 }
 
+function announceJoin(player) {
+    const nickname = String(
+        player.nickname || "Игрок"
+    ).trim().slice(0, 20);
+
+    systemMessage(
+        `игрок "${nickname}" присоединился к игре (${levelName(player.level)})`
+    );
+}
+
+function announceLeave(player, level = player.level) {
+    const nickname = String(
+        player.nickname || "Игрок"
+    ).trim().slice(0, 20);
+
+    systemMessage(
+        `игрок "${nickname}" вышел из игры (${levelName(level)})`
+    );
+}
+
 /* =====================================================
-   ПРОВЕРКА ПИКСЕЛЕЙ КУБА
+   ПРОВЕРКА И СОХРАНЕНИЕ ПИКСЕЛЕЙ
 ===================================================== */
 
 function sanitizePixels(pixels) {
-    if (!Array.isArray(pixels) || pixels.length !== 8) {
+    if (
+        !Array.isArray(pixels) ||
+        pixels.length !== 8
+    ) {
         return null;
     }
 
@@ -132,7 +171,10 @@ function sanitizePixels(pixels) {
         for (let x = 0; x < 8; x++) {
             const pixel = pixels[y][x];
 
-            if (!pixel || typeof pixel !== "object") {
+            if (
+                !pixel ||
+                typeof pixel !== "object"
+            ) {
                 result[y][x] = null;
                 continue;
             }
@@ -146,11 +188,14 @@ function sanitizePixels(pixels) {
             };
 
             const alphaValue =
-                pixel.a == null ? 1 : Number(pixel.a);
+                pixel.a == null
+                    ? 1
+                    : Number(pixel.a);
 
-            const a = Number.isFinite(alphaValue)
-                ? Math.max(0, Math.min(1, alphaValue))
-                : 1;
+            const a =
+                Number.isFinite(alphaValue)
+                    ? Math.max(0, Math.min(1, alphaValue))
+                    : 1;
 
             result[y][x] = {
                 r: channel(pixel.r),
@@ -165,20 +210,53 @@ function sanitizePixels(pixels) {
 }
 
 /* =====================================================
-   СМЕНА УРОВНЯ / КОМНАТЫ
+   ВЫХОД ИЗ УРОВНЯ
 ===================================================== */
 
-function movePlayerToLevel(socket, levelValue) {
+function leavePlayerLevel(socket) {
     const player = players[socket.id];
 
-    if (!player || !isValidLevel(levelValue)) {
+    if (!player || !player.inGame)
+        return;
+
+    const oldLevel = player.level;
+
+    player.inGame = false;
+
+    socket.leave(levelRoom(oldLevel));
+
+    // Обновляем список игроков старого уровня.
+    broadcastLevel(oldLevel);
+
+    // Очищаем список игроков у самого вышедшего.
+    socket.emit("players:update", {});
+
+    // Сообщение о выходе.
+    announceLeave(player, oldLevel);
+}
+
+/* =====================================================
+   ВХОД В УРОВЕНЬ
+===================================================== */
+
+function enterPlayerLevel(socket, levelValue) {
+    const player = players[socket.id];
+
+    if (
+        !player ||
+        !isValidLevel(levelValue)
+    ) {
         return;
     }
 
     const newLevel = Number(levelValue);
-    const oldLevel = player.level;
 
-    if (newLevel === oldLevel) {
+    // Если игрок уже находится на этой карте,
+    // повторно сообщение не отправляем.
+    if (
+        player.inGame &&
+        player.level === newLevel
+    ) {
         socket.join(levelRoom(newLevel));
 
         socket.emit(
@@ -189,24 +267,53 @@ function movePlayerToLevel(socket, levelValue) {
         return;
     }
 
-    // Выводим игрока из предыдущей комнаты.
-    socket.leave(levelRoom(oldLevel));
+    // Если игрок был на другой карте,
+    // сначала отправляем сообщение о выходе.
+    if (player.inGame) {
+        leavePlayerLevel(socket);
+    }
 
     player.level = newLevel;
+    player.inGame = true;
 
-    // Добавляем игрока в новую комнату.
     socket.join(levelRoom(newLevel));
 
-    // Обновляем список на старой карте.
-    broadcastLevel(oldLevel);
-
-    // Отправляем список игроков новой карты.
+    // Отправляем игроку список новой карты.
     socket.emit(
         "players:update",
         snapshotForLevel(newLevel)
     );
 
+    // Обновляем список игроков этой карты.
     broadcastLevel(newLevel);
+
+    // Отправляем сообщение о входе.
+    announceJoin(player);
+}
+
+/* =====================================================
+   СМЕНА ВЫБРАННОЙ КАРТЫ
+===================================================== */
+
+function movePlayerToLevel(socket, levelValue) {
+    const player = players[socket.id];
+
+    if (
+        !player ||
+        !isValidLevel(levelValue)
+    ) {
+        return;
+    }
+
+    const newLevel = Number(levelValue);
+
+    if (player.inGame) {
+        enterPlayerLevel(socket, newLevel);
+    } else {
+        // В меню только запоминаем выбранный уровень.
+        // Сообщение о входе пока не отправляем.
+        player.level = newLevel;
+    }
 }
 
 /* =====================================================
@@ -216,11 +323,11 @@ function movePlayerToLevel(socket, levelValue) {
 io.on("connection", socket => {
     const initialLevel = MIN_LEVEL;
 
-    socket.join(levelRoom(initialLevel));
-
     players[socket.id] = {
         id: socket.id,
+
         level: initialLevel,
+        inGame: false,
 
         x: 200,
         y: 250,
@@ -229,33 +336,34 @@ io.on("connection", socket => {
         vy: 0,
 
         size: 64,
+
         nickname: "Игрок",
         pixels: null,
 
         lastMoveAt: Date.now(),
         lastChatAt: 0,
-        lastDeathNoticeAt: 0,
-
-        joinAnnounced: false
+        lastDeathNoticeAt: 0
     };
 
-    socket.emit(
-        "players:update",
-        snapshotForLevel(initialLevel)
+    // Простое подключение к сайту
+    // не считается входом в уровень.
+    socket.emit("players:update", {});
+
+    console.log(
+        `Игрок подключился: ${socket.id}`
     );
 
-    broadcastLevel(initialLevel);
-
-    console.log(`Игрок подключился: ${socket.id}`);
-
-    /* ================================================
+    /* =================================================
        ИМЯ ИГРОКА
-    ================================================ */
+    ================================================= */
 
     socket.on("player:name", name => {
         const player = players[socket.id];
 
-        if (!player || typeof name !== "string") {
+        if (
+            !player ||
+            typeof name !== "string"
+        ) {
             return;
         }
 
@@ -264,33 +372,72 @@ io.on("connection", socket => {
 
         player.nickname = cleanName;
 
-        // Приветствуем игрока только один раз за подключение.
-        if (!player.joinAnnounced) {
-            player.joinAnnounced = true;
-
-            systemMessage(
-                `игрок "${cleanName}" присоединился к игре`
-            );
+        if (player.inGame) {
+            broadcastLevel(player.level);
         }
-
-        broadcastLevel(player.level);
     });
 
-    /* ================================================
-       ВЫБОР / СМЕНА КАРТЫ
-    ================================================ */
+    /* =================================================
+       ВЫБОР УРОВНЯ
+    ================================================= */
 
     socket.on("player:level", level => {
-        if (!isValidLevel(level)) {
+        if (!isValidLevel(level))
             return;
-        }
 
-        movePlayerToLevel(socket, Number(level));
+        movePlayerToLevel(
+            socket,
+            Number(level)
+        );
     });
 
-    /* ================================================
+    /* =================================================
+       ФАКТИЧЕСКИЙ ВХОД В УРОВЕНЬ
+       КНОПКА START
+    ================================================= */
+
+    socket.on("player:enter-level", data => {
+        const player = players[socket.id];
+
+        if (!player)
+            return;
+
+        const level =
+            data && typeof data === "object"
+                ? data.level
+                : data;
+
+        if (!isValidLevel(level))
+            return;
+
+        if (
+            data &&
+            typeof data === "object" &&
+            typeof data.nickname === "string"
+        ) {
+            player.nickname =
+                data.nickname.trim().slice(0, 20) ||
+                "Игрок";
+        }
+
+        enterPlayerLevel(
+            socket,
+            Number(level)
+        );
+    });
+
+    /* =================================================
+       ФАКТИЧЕСКИЙ ВЫХОД ИЗ УРОВНЯ
+       КНОПКА MENU
+    ================================================= */
+
+    socket.on("player:leave-level", () => {
+        leavePlayerLevel(socket);
+    });
+
+    /* =================================================
        ПОЗИЦИЯ, СКОРОСТЬ И РИСУНОК КУБА
-    ================================================ */
+    ================================================= */
 
     socket.on("player:move", data => {
         const player = players[socket.id];
@@ -303,13 +450,17 @@ io.on("connection", socket => {
             return;
         }
 
-        // Обновляем уровень, если клиент передал новый.
+        // Обновляем выбранный уровень,
+        // но не вводим игрока в игру.
         if (
             data.level != null &&
             isValidLevel(data.level) &&
             Number(data.level) !== player.level
         ) {
-            movePlayerToLevel(socket, Number(data.level));
+            movePlayerToLevel(
+                socket,
+                Number(data.level)
+            );
         }
 
         const previousX = player.x;
@@ -374,10 +525,12 @@ io.on("connection", socket => {
 
         if (typeof data.nickname === "string") {
             player.nickname =
-                data.nickname.trim().slice(0, 20) || "Игрок";
+                data.nickname.trim().slice(0, 20) ||
+                "Игрок";
         }
 
-        const cleanPixels = sanitizePixels(data.pixels);
+        const cleanPixels =
+            sanitizePixels(data.pixels);
 
         if (cleanPixels) {
             player.pixels = cleanPixels;
@@ -392,16 +545,21 @@ io.on("connection", socket => {
             );
         }
 
-        // Обновление отправляется только в комнату текущей карты.
-        broadcastLevel(player.level);
+        // Передаём обновления только игрокам этой карты.
+        if (player.inGame) {
+            broadcastLevel(player.level);
+        }
     });
 
-    /* ================================================
-       СИНХРОНИЗАЦИЯ ОТСКОКА
-    ================================================ */
+    /* =================================================
+       СТОЛКНОВЕНИЕ ДВУХ ИГРОКОВ
+    ================================================= */
 
     socket.on("player:collision", data => {
-        if (!data || typeof data !== "object") {
+        if (
+            !data ||
+            typeof data !== "object"
+        ) {
             return;
         }
 
@@ -417,10 +575,12 @@ io.on("connection", socket => {
         const self = players[socket.id];
         const target = players[targetId];
 
-        // Запрещаем столкновения между разными картами.
+        // Коллизии разрешены только на одной карте.
         if (
             !self ||
             !target ||
+            !self.inGame ||
+            !target.inGame ||
             self.level !== target.level
         ) {
             return;
@@ -436,11 +596,13 @@ io.on("connection", socket => {
         const lastCollision =
             collisionCooldowns.get(pairKey) || 0;
 
-        if (now - lastCollision < 100) {
+        if (now - lastCollision < 100)
             return;
-        }
 
-        collisionCooldowns.set(pairKey, now);
+        collisionCooldowns.set(
+            pairKey,
+            now
+        );
 
         self.vx = clampVelocity(data.selfVx);
         self.vy = clampVelocity(data.selfVy);
@@ -448,19 +610,25 @@ io.on("connection", socket => {
         target.vx = clampVelocity(data.targetVx);
         target.vy = clampVelocity(data.targetVy);
 
-        io.to(socket.id).emit("player:bounce", {
-            vx: self.vx,
-            vy: self.vy
-        });
+        io.to(socket.id).emit(
+            "player:bounce",
+            {
+                vx: self.vx,
+                vy: self.vy
+            }
+        );
 
-        io.to(targetId).emit("player:bounce", {
-            vx: target.vx,
-            vy: target.vy
-        });
+        io.to(targetId).emit(
+            "player:bounce",
+            {
+                vx: target.vx,
+                vy: target.vy
+            }
+        );
 
         broadcastLevel(self.level);
 
-        // Очищаем старые блокировки столкновений.
+        // Чистим старые записи защиты от повторных столкновений.
         for (const [key, timestamp] of collisionCooldowns) {
             if (now - timestamp > 10000) {
                 collisionCooldowns.delete(key);
@@ -468,10 +636,10 @@ io.on("connection", socket => {
         }
     });
 
-    /* ================================================
+    /* =================================================
        ОБЫЧНЫЙ ЧАТ
-       Чат общий для всех уровней.
-    ================================================ */
+       ОБЩИЙ ДЛЯ ВСЕХ КАРТ
+    ================================================= */
 
     socket.on("chat:message", message => {
         const player = players[socket.id];
@@ -486,16 +654,14 @@ io.on("connection", socket => {
         const cleanMessage =
             message.trim().slice(0, 200);
 
-        if (!cleanMessage) {
+        if (!cleanMessage)
             return;
-        }
 
         const now = Date.now();
 
-        // Защита от слишком частой отправки сообщений.
-        if (now - player.lastChatAt < 400) {
+        // Небольшая защита от спама.
+        if (now - player.lastChatAt < 400)
             return;
-        }
 
         player.lastChatAt = now;
 
@@ -507,15 +673,16 @@ io.on("connection", socket => {
         });
     });
 
-    /* ================================================
+    /* =================================================
        СИСТЕМНЫЕ СООБЩЕНИЯ О СМЕРТИ
-    ================================================ */
+    ================================================= */
 
     socket.on("player:died", data => {
         const player = players[socket.id];
 
         if (
             !player ||
+            !player.inGame ||
             !data ||
             typeof data !== "object"
         ) {
@@ -533,9 +700,8 @@ io.on("connection", socket => {
 
         const now = Date.now();
 
-        if (now - player.lastDeathNoticeAt < 1000) {
+        if (now - player.lastDeathNoticeAt < 1000)
             return;
-        }
 
         player.lastDeathNoticeAt = now;
 
@@ -554,41 +720,34 @@ io.on("connection", socket => {
         }
     });
 
-    /* ================================================
+    /* =================================================
        ОТКЛЮЧЕНИЕ ИГРОКА
-    ================================================ */
+    ================================================= */
 
     socket.on("disconnect", reason => {
         const player = players[socket.id];
 
-        if (!player) {
+        if (!player)
             return;
-        }
 
         const oldLevel = player.level;
-
-        const nickname = String(
-            player.nickname || "Игрок"
-        ).trim().slice(0, 20);
-
-        const shouldAnnounceLeave =
-            player.joinAnnounced;
+        const wasInGame = player.inGame;
 
         delete players[socket.id];
 
-        // Игрок пропадёт из списка только на своей карте.
-        broadcastLevel(oldLevel);
+        if (wasInGame) {
+            announceLeave(
+                player,
+                oldLevel
+            );
 
-        for (const [key] of collisionCooldowns) {
+            broadcastLevel(oldLevel);
+        }
+
+        for (const [key, timestamp] of collisionCooldowns) {
             if (key.split("|").includes(socket.id)) {
                 collisionCooldowns.delete(key);
             }
-        }
-
-        if (shouldAnnounceLeave) {
-            systemMessage(
-                `игрок "${nickname}" вышел из игры`
-            );
         }
 
         console.log(
@@ -598,7 +757,8 @@ io.on("connection", socket => {
 });
 
 /* =====================================================
-   ПОИСК ИГРОКОВ ТОЛЬКО НА ВЫБРАННОЙ КАРТЕ
+   API ПОИСКА ИГРОКОВ
+   ТОЛЬКО ИГРОКИ ВЫБРАННОЙ КАРТЫ
 ===================================================== */
 
 app.get("/api/players", (req, res) => {
@@ -606,10 +766,15 @@ app.get("/api/players", (req, res) => {
         req.query.search || ""
     ).trim().toLocaleLowerCase();
 
-    const level = normalizeLevel(req.query.level);
+    const level = normalizeLevel(
+        req.query.level
+    );
 
     const result = Object.values(players).filter(player => {
-        if (player.level !== level) {
+        if (
+            !player.inGame ||
+            player.level !== level
+        ) {
             return false;
         }
 
@@ -617,26 +782,28 @@ app.get("/api/players", (req, res) => {
             player.nickname || "Игрок"
         ).toLocaleLowerCase();
 
-        return !search || nickname.includes(search);
+        return (
+            !search ||
+            nickname.includes(search)
+        );
     });
 
-    res.json(result.map(player => ({
-        nickname: player.nickname || "Игрок",
-        level: player.level,
-
-        x: player.x,
-        y: player.y,
-
-        vx: player.vx,
-        vy: player.vy,
-
-        size: player.size,
-        pixels: player.pixels
-    })));
+    res.json(
+        result.map(player => ({
+            nickname: player.nickname || "Игрок",
+            level: player.level,
+            x: player.x,
+            y: player.y,
+            vx: player.vx,
+            vy: player.vy,
+            size: player.size,
+            pixels: player.pixels
+        }))
+    );
 });
 
 /* =====================================================
-   СТАТИЧЕСКИЕ ФАЙЛЫ
+   СТАТИЧЕСКИЕ ФАЙЛЫ И ГЛАВНАЯ СТРАНИЦА
 ===================================================== */
 
 app.use(express.static(__dirname));
@@ -656,16 +823,13 @@ app.get("/", (req, res) => {
     res.sendFile(htmlPath);
 });
 
-/* =====================================================
-   FALLBACK
-===================================================== */
-
 app.use((req, res, next) => {
-    if (req.method !== "GET") {
+    if (req.method !== "GET")
         return next();
-    }
 
-    res.status(404).send("Страница не найдена");
+    res.status(404).send(
+        "Страница не найдена"
+    );
 });
 
 /* =====================================================
