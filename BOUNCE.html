@@ -1730,53 +1730,69 @@ function rgbToHex(r,g,b) {
    отдельно для каждого пикселя.
 */
 
-function getMixedColor() {
+function clampPercent(value, fallback = 0) {
+    const number = Number(value);
 
-    const a =
-        hexToRgb(color1.value);
+    if (!Number.isFinite(number)) {
+        return Math.max(0, Math.min(100, Number(fallback) || 0));
+    }
 
-    const b =
-        hexToRgb(color2.value);
+    return Math.max(0, Math.min(100, number));
+}
 
-    const m =
-        Number(mix.value) / 100;
 
-    let r =
-        a.r * (1-m) +
-        b.r * m;
+function getMixedColor(settings = {}) {
+    const a = hexToRgb(color1.value);
+    const b = hexToRgb(color2.value);
 
-    let g =
-        a.g * (1-m) +
-        b.g * m;
+    // Берём настройки конкретного пикселя.
+    const m = clampPercent(settings.mix ?? mix.value) / 100;
+    const l = clampPercent(settings.light ?? light.value) / 100;
+    const d = clampPercent(settings.dark ?? dark.value) / 100;
+    const o = clampPercent(settings.opacity ?? opacity.value) / 100;
 
-    let bl =
-        a.b * (1-m) +
-        b.b * m;
+    let r = a.r * (1 - m) + b.r * m;
+    let g = a.g * (1 - m) + b.g * m;
+    let bl = a.b * (1 - m) + b.b * m;
 
-    const l =
-        Number(light.value) / 100;
+    // Бледность.
+    r += (255 - r) * l;
+    g += (255 - g) * l;
+    bl += (255 - bl) * l;
 
-    r += (255-r) * l;
-    g += (255-g) * l;
-    bl += (255-bl) * l;
-
-    const d =
-        Number(dark.value) / 100;
-
-    r *= 1-d;
-    g *= 1-d;
-    bl *= 1-d;
+    // Тьма.
+    r *= 1 - d;
+    g *= 1 - d;
+    bl *= 1 - d;
 
     return {
-
         r: Math.round(r),
-
         g: Math.round(g),
-
         b: Math.round(bl),
+        a: o
+    };
+}
 
-        a: Number(opacity.value) / 100
 
+/* =====================================================
+   СОЗДАНИЕ ПИКСЕЛЯ С СОБСТВЕННЫМИ НАСТРОЙКАМИ
+===================================================== */
+
+function createPixelData(settings = {}) {
+    const recipe = {
+        recipeVersion: 1,
+
+        mix: clampPercent(settings.mix ?? mix.value),
+        light: clampPercent(settings.light ?? light.value),
+        dark: clampPercent(settings.dark ?? dark.value),
+        opacity: clampPercent(settings.opacity ?? opacity.value)
+    };
+
+    const color = getMixedColor(recipe);
+
+    return {
+        ...color,
+        ...recipe
     };
 }
 
@@ -1804,17 +1820,36 @@ function getMixedHex() {
 ===================================================== */
 
 function recolorPaintedPixels(save = false) {
-    const newColor = getMixedColor();
     let changed = false;
 
     for (let y = 0; y < GRID; y++) {
         for (let x = 0; x < GRID; x++) {
+            const pixel = pixels[y][x];
 
-            // Прозрачные пиксели не трогаем.
-            if (pixels[y][x] !== null) {
-                pixels[y][x] = { ...newColor };
-                changed = true;
+            if (!pixel) continue;
+
+            let settings;
+
+            if (pixel.recipeVersion === 1) {
+                // Сохраняем индивидуальные настройки пикселя.
+                settings = pixel;
+            } else {
+                // Переводим старые пиксели в новый формат.
+                const oldAlpha = Number(pixel.a);
+
+                settings = {
+                    mix: mix.value,
+                    light: light.value,
+                    dark: dark.value,
+                    opacity: Number.isFinite(oldAlpha)
+                        ? oldAlpha * 100
+                        : opacity.value
+                };
             }
+
+            // Пересчитываем цвет с новой палитрой.
+            pixels[y][x] = createPixelData(settings);
+            changed = true;
         }
     }
 
@@ -1822,7 +1857,6 @@ function recolorPaintedPixels(save = false) {
 
     drawPixelGrid();
 
-    // Сохраняем куб после завершения изменения цвета.
     if (save) {
         saveCube();
     }
@@ -1891,26 +1925,27 @@ function updateColor() {
 }
 
 
-[
-    color1,
-    color2,
-    mix,
-    light,
-    dark,
-    opacity
-]
-.forEach(element => {
+// Первый и второй цвета меняют уже нарисованные пиксели.
+[color1, color2].forEach(element => {
 
-    // Обновляем предпросмотр и весь раскрашенный куб.
-    element.addEventListener("input", () => {
-        updateColor();
-        recolorPaintedPixels(false);
-    });
+element.addEventListener("input", () => {
+    updateColor();
+    recolorPaintedPixels(false);
+});
 
-    // Сохраняем результат после завершения изменения.
-    element.addEventListener("change", () => {
-        recolorPaintedPixels(true);
-    });
+element.addEventListener("change", () => {
+    updateColor();
+    recolorPaintedPixels(true);
+});
+
+});
+
+
+// Остальные настройки меняют параметры новой кисти.
+// Уже нарисованные пиксели сохраняют свои настройки.
+[mix, light, dark, opacity].forEach(element => {
+
+element.addEventListener("input", updateColor);
 
 });
 
@@ -2155,19 +2190,23 @@ try {
             }
 
 
-            pixels[y][x] = {
-
-                r: Number(pixel.r) || 0,
-
-                g: Number(pixel.g) || 0,
-
-                b: Number(pixel.b) || 0,
-
-                a:
-                    pixel.a == null
-                        ? 1
-                        : Number(pixel.a)
-            };
+            if (pixel.recipeVersion === 1) {
+                // Загружаем сохранённые индивидуальные настройки.
+                pixels[y][x] = createPixelData(pixel);
+                        
+            } else {
+                // Старый формат: восстанавливаем по текущим настройкам.
+                const oldAlpha = Number(pixel.a);
+            
+                pixels[y][x] = createPixelData({
+                    mix: mix.value,
+                    light: light.value,
+                    dark: dark.value,
+                    opacity: Number.isFinite(oldAlpha)
+                        ? oldAlpha * 100
+                        : opacity.value
+                });
+            }
         }
     }
 
@@ -2236,7 +2275,7 @@ if (
 */
 
 pixels[py][px] =
-    getMixedColor();
+    createPixelData();
 
 
 drawPixelGrid();
@@ -2300,7 +2339,7 @@ document.getElementById("fillBtn")
             */
 
             pixels[y][x] =
-                { ...color };
+                createPixelData();
         }
     }
 
