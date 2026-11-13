@@ -1799,6 +1799,36 @@ function getMixedHex() {
 }
 
 
+/* =====================================================
+   ПЕРЕКРАШИВАНИЕ ВСЕГО КУБА
+===================================================== */
+
+function recolorPaintedPixels(save = false) {
+    const newColor = getMixedColor();
+    let changed = false;
+
+    for (let y = 0; y < GRID; y++) {
+        for (let x = 0; x < GRID; x++) {
+
+            // Прозрачные пиксели не трогаем.
+            if (pixels[y][x] !== null) {
+                pixels[y][x] = { ...newColor };
+                changed = true;
+            }
+        }
+    }
+
+    if (!changed) return;
+
+    drawPixelGrid();
+
+    // Сохраняем куб после завершения изменения цвета.
+    if (save) {
+        saveCube();
+    }
+}
+
+
 function updateColor() {
 
     const color =
@@ -1871,10 +1901,16 @@ function updateColor() {
 ]
 .forEach(element => {
 
-    element.addEventListener(
-        "input",
-        updateColor
-    );
+    // Обновляем предпросмотр и весь раскрашенный куб.
+    element.addEventListener("input", () => {
+        updateColor();
+        recolorPaintedPixels(false);
+    });
+
+    // Сохраняем результат после завершения изменения.
+    element.addEventListener("change", () => {
+        recolorPaintedPixels(true);
+    });
 
 });
 
