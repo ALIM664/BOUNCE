@@ -1265,9 +1265,7 @@ socket.on("player:bounce", data => {
 });
 
 socket.on("players:update", serverPlayers => {
-    if (!serverPlayers || typeof serverPlayers !== "object") {
-        return;
-    }
+    if (!serverPlayers || typeof serverPlayers !== "object") return;
 
     const incomingPlayers = Array.isArray(serverPlayers)
         ? serverPlayers.filter(Boolean).map((player, index) => ({
@@ -1276,42 +1274,29 @@ socket.on("players:update", serverPlayers => {
         }))
         : Object.entries(serverPlayers)
             .filter(([, player]) => player && typeof player === "object")
-            .map(([id, player]) => ({
-                ...player,
-                id: player.id ?? id
-            }));
+            .map(([id, player]) => ({ ...player, id: player.id ?? id }));
 
-    // Дополнительная проверка текущего уровня.
+    // Дополнительная клиентская проверка: принимаем только игроков
+    // текущего уровня. Сервер также изолирует уровни по Socket.IO-комнатам.
     const currentLevelPlayers = incomingPlayers.filter(player =>
         Number(player.level) === Number(selectedLevel)
     );
 
-    // Полностью очищаем старый список.
-    for (const id of Object.keys(players)) {
-        delete players[id];
-    }
-
-    // Добавляем только игроков текущей карты.
+    // Полностью заменяем список, чтобы старые игроки другой карты
+    // не оставались в памяти после переключения уровня.
+    for (const id of Object.keys(players)) delete players[id];
     for (const player of currentLevelPlayers) {
         players[String(player.id)] = player;
     }
 
-    // Обновляем карточки игроков только в игровом режиме.
-    const gameIsActive =
-        document.getElementById("gameScreen")
-            ?.classList.contains("active");
-
+    // Снимки игрового уровня не должны очищать каталог поиска в меню.
+    const gameIsActive = document.getElementById("gameScreen")?.classList.contains("active");
     if (gameIsActive) {
         const directorySignature = JSON.stringify(
             currentLevelPlayers.map(player => ({
                 id: player.id,
                 level: player.level,
-                nickname: String(
-                    player.nickname ??
-                    player.username ??
-                    player.name ??
-                    "Игрок"
-                ),
+                nickname: String(player.nickname ?? player.username ?? player.name ?? "Игрок"),
                 pixels: player.pixels ?? player.cubePixels ?? null,
                 size: player.size ?? null
             }))
@@ -1320,10 +1305,7 @@ socket.on("players:update", serverPlayers => {
         if (directorySignature !== lastPlayersDirectorySignature) {
             lastPlayersDirectorySignature = directorySignature;
             allPlayers = currentLevelPlayers;
-
-            if (playersList) {
-                renderPlayers(playerSearch?.value ?? "");
-            }
+            if (playersList) renderPlayers(playerSearch?.value ?? "");
         }
     }
 });
@@ -1442,39 +1424,26 @@ function syncPlayerPosition() {
 
 let allPlayers = [];
 let lastPlayersDirectorySignature = "";
-let playersRequestId = 0;
 
 const playerSearch = document.getElementById("playerSearch");
 const playerSearchButton = document.getElementById("playerSearchButton");
 const playersList = document.getElementById("playersList");
 
 async function loadPlayers(search = "") {
-    const requestId = ++playersRequestId;
-
     const query = String(search ?? "").trim();
-    const requestedLevel = Number(selectedLevel);
-
-    if (!playersList) return;
 
     playersList.innerHTML = `
-        <div class="players-loading">
-            Загрузка игроков...
-        </div>
+        <div class="players-loading">Загрузка игроков...</div>
     `;
 
     try {
         const response = await fetch(
-            "/api/players?level=" +
-            encodeURIComponent(String(requestedLevel)) +
-            "&search=" +
-            encodeURIComponent(query),
+            "/api/players?level=" + encodeURIComponent(String(selectedLevel)) +
+            "&search=" + encodeURIComponent(query),
             {
                 method: "GET",
                 credentials: "include",
-                cache: "no-store",
-                headers: {
-                    Accept: "application/json"
-                }
+                headers: { Accept: "application/json" }
             }
         );
 
@@ -1483,44 +1452,17 @@ async function loadPlayers(search = "") {
         }
 
         const data = await response.json();
-
-        // Игнорируем старые запросы.
-        if (requestId !== playersRequestId) return;
-
-        // Игнорируем ответы от предыдущей карты.
-        if (requestedLevel !== Number(selectedLevel)) return;
-
-        // Игнорируем ответы для старого поискового запроса.
-        if (
-            query !== String(playerSearch?.value ?? "").trim()
-        ) {
-            return;
-        }
-
-        const receivedPlayers = Array.isArray(data)
+        allPlayers = Array.isArray(data)
             ? data
             : Array.isArray(data?.players)
                 ? data.players
                 : [];
 
-        // Дополнительная проверка уровня.
-        allPlayers = receivedPlayers.filter(player =>
-            player &&
-            Number(player.level ?? requestedLevel) === requestedLevel
-        );
-
         renderPlayers(query);
-
     } catch (error) {
-        // Не показываем ошибку от устаревшего запроса.
-        if (requestId !== playersRequestId) return;
-
         console.error("PLAYERS ERROR:", error);
-
         playersList.innerHTML = `
-            <div class="players-empty">
-                Не удалось загрузить игроков
-            </div>
+            <div class="players-empty">Не удалось загрузить игроков</div>
         `;
     }
 }
@@ -1745,7 +1687,6 @@ function getMixedColor(settings = {}) {
     const a = hexToRgb(color1.value);
     const b = hexToRgb(color2.value);
 
-    // Берём настройки конкретного пикселя.
     const m = clampPercent(settings.mix ?? mix.value) / 100;
     const l = clampPercent(settings.light ?? light.value) / 100;
     const d = clampPercent(settings.dark ?? dark.value) / 100;
@@ -1755,12 +1696,10 @@ function getMixedColor(settings = {}) {
     let g = a.g * (1 - m) + b.g * m;
     let bl = a.b * (1 - m) + b.b * m;
 
-    // Бледность.
     r += (255 - r) * l;
     g += (255 - g) * l;
     bl += (255 - bl) * l;
 
-    // Тьма.
     r *= 1 - d;
     g *= 1 - d;
     bl *= 1 - d;
@@ -1774,14 +1713,9 @@ function getMixedColor(settings = {}) {
 }
 
 
-/* =====================================================
-   СОЗДАНИЕ ПИКСЕЛЯ С СОБСТВЕННЫМИ НАСТРОЙКАМИ
-===================================================== */
-
 function createPixelData(settings = {}) {
     const recipe = {
         recipeVersion: 1,
-
         mix: clampPercent(settings.mix ?? mix.value),
         light: clampPercent(settings.light ?? light.value),
         dark: clampPercent(settings.dark ?? dark.value),
@@ -1794,6 +1728,41 @@ function createPixelData(settings = {}) {
         ...color,
         ...recipe
     };
+}
+
+
+function recolorPaintedPixels(save = false) {
+    let changed = false;
+
+    for (let y = 0; y < GRID; y++) {
+        for (let x = 0; x < GRID; x++) {
+            const pixel = pixels[y][x];
+            if (!pixel) continue;
+
+            let settings;
+            if (pixel.recipeVersion === 1) {
+                settings = pixel;
+            } else {
+                const oldAlpha = Number(pixel.a);
+                settings = {
+                    mix: mix.value,
+                    light: light.value,
+                    dark: dark.value,
+                    opacity: Number.isFinite(oldAlpha)
+                        ? oldAlpha * 100
+                        : opacity.value
+                };
+            }
+
+            pixels[y][x] = createPixelData(settings);
+            changed = true;
+        }
+    }
+
+    if (!changed) return;
+
+    drawPixelGrid();
+    if (save) saveCube();
 }
 
 
@@ -1812,54 +1781,6 @@ function getMixedHex() {
         color.g,
         color.b
     );
-}
-
-
-/* =====================================================
-   ПЕРЕКРАШИВАНИЕ ВСЕГО КУБА
-===================================================== */
-
-function recolorPaintedPixels(save = false) {
-    let changed = false;
-
-    for (let y = 0; y < GRID; y++) {
-        for (let x = 0; x < GRID; x++) {
-            const pixel = pixels[y][x];
-
-            if (!pixel) continue;
-
-            let settings;
-
-            if (pixel.recipeVersion === 1) {
-                // Сохраняем индивидуальные настройки пикселя.
-                settings = pixel;
-            } else {
-                // Переводим старые пиксели в новый формат.
-                const oldAlpha = Number(pixel.a);
-
-                settings = {
-                    mix: mix.value,
-                    light: light.value,
-                    dark: dark.value,
-                    opacity: Number.isFinite(oldAlpha)
-                        ? oldAlpha * 100
-                        : opacity.value
-                };
-            }
-
-            // Пересчитываем цвет с новой палитрой.
-            pixels[y][x] = createPixelData(settings);
-            changed = true;
-        }
-    }
-
-    if (!changed) return;
-
-    drawPixelGrid();
-
-    if (save) {
-        saveCube();
-    }
 }
 
 
@@ -1925,28 +1846,20 @@ function updateColor() {
 }
 
 
-// Первый и второй цвета меняют уже нарисованные пиксели.
 [color1, color2].forEach(element => {
+    element.addEventListener("input", () => {
+        updateColor();
+        recolorPaintedPixels(false);
+    });
 
-element.addEventListener("input", () => {
-    updateColor();
-    recolorPaintedPixels(false);
+    element.addEventListener("change", () => {
+        updateColor();
+        recolorPaintedPixels(true);
+    });
 });
 
-element.addEventListener("change", () => {
-    updateColor();
-    recolorPaintedPixels(true);
-});
-
-});
-
-
-// Остальные настройки меняют параметры новой кисти.
-// Уже нарисованные пиксели сохраняют свои настройки.
 [mix, light, dark, opacity].forEach(element => {
-
-element.addEventListener("input", updateColor);
-
+    element.addEventListener("input", updateColor);
 });
 
 
@@ -2191,13 +2104,9 @@ try {
 
 
             if (pixel.recipeVersion === 1) {
-                // Загружаем сохранённые индивидуальные настройки.
                 pixels[y][x] = createPixelData(pixel);
-                        
             } else {
-                // Старый формат: восстанавливаем по текущим настройкам.
                 const oldAlpha = Number(pixel.a);
-            
                 pixels[y][x] = createPixelData({
                     mix: mix.value,
                     light: light.value,
@@ -2274,8 +2183,7 @@ if (
    собственную alpha.
 */
 
-pixels[py][px] =
-    createPixelData();
+pixels[py][px] = createPixelData();
 
 
 drawPixelGrid();
@@ -2324,22 +2232,9 @@ document.getElementById("fillBtn")
 "click",
 () => {
 
-    const color =
-        getMixedColor();
-
-
     for (let y = 0; y < GRID; y++) {
-
         for (let x = 0; x < GRID; x++) {
-
-            /*
-               Создаём отдельную копию,
-               чтобы каждый пиксель имел
-               собственное значение.
-            */
-
-            pixels[y][x] =
-                createPixelData();
+            pixels[y][x] = createPixelData();
         }
     }
 
@@ -2591,7 +2486,6 @@ button.addEventListener(
             "selected"
         );
 
-        socket.emit("player:level", selectedLevel);
         loadPlayers(playerSearch?.value ?? "");
     }
 );
@@ -2651,17 +2545,19 @@ function backToMenu() {
 
 stopLevelMusic();
 
+// Сообщаем серверу о выходе из текущего уровня.
 socket.emit("player:leave-level");
-
 
 gameScreen.classList.remove(
     "active"
 );
 
-
 menu.classList.add(
     "active"
 );
+
+// В меню каталог снова загружается по выбранной карте.
+loadPlayers(playerSearch?.value ?? "");
 }
 
 
@@ -2765,6 +2661,11 @@ const MAX_SPEED = 30;
 ===================================================== */
 
 let blocks = [];
+
+// Чекпоинты текущего уровня и последняя сохранённая точка возрождения.
+let checkpoints = [];
+let activeCheckpoint = null;
+let checkpointNoticeUntil = 0;
 
 
 /* =====================================================
@@ -3488,6 +3389,37 @@ function createLevel5() {
 
 
 /* =====================================================
+   ЧЕКПОИНТЫ ДЛЯ ПЯТИ УРОВНЕЙ
+===================================================== */
+
+// x/y — место маркера и центр куба над платформой.
+// spawnX/spawnY — безопасная позиция, куда куб вернётся после смерти.
+const CHECKPOINTS_BY_LEVEL = {
+    1: [
+        { id: 1, x: 1450, y: 768, spawnX: 1500, spawnY: 768 },
+        { id: 2, x: 1800, y: 1468, spawnX: 1850, spawnY: 1468 }
+    ],
+    2: [
+        { id: 1, x: 400, y: 468, spawnX: 450, spawnY: 468 },
+        { id: 2, x: 900, y: 768, spawnX: 950, spawnY: 768 }
+    ],
+    3: [
+        { id: 1, x: 480, y: 318, spawnX: 530, spawnY: 318 },
+        { id: 2, x: 1450, y: 368, spawnX: 1500, spawnY: 368 }
+    ],
+    4: [
+        { id: 1, x: 500, y: 368, spawnX: 550, spawnY: 368 },
+        { id: 2, x: 1450, y: 468, spawnX: 1500, spawnY: 468 }
+    ],
+    5: [
+        { id: 1, x: 430, y: 268, spawnX: 480, spawnY: 268 },
+        { id: 2, x: 1050, y: 318, spawnX: 1100, spawnY: 318 },
+        { id: 3, x: 1400, y: 688, spawnX: 1450, spawnY: 688 }
+    ]
+};
+
+
+/* =====================================================
    ЗАГРУЗКА УРОВНЯ
 ===================================================== */
 
@@ -3509,6 +3441,15 @@ function loadLevel(level) {
         blocks = createLevel5();
 
     selectedLevel = level;
+
+    // У каждого уровня собственные чекпоинты. При загрузке новой карты
+    // старый активированный чекпоинт не переносится на другой уровень.
+    checkpoints = (CHECKPOINTS_BY_LEVEL[level] || []).map(checkpoint => ({
+        ...checkpoint,
+        activated: false
+    }));
+    activeCheckpoint = null;
+    checkpointNoticeUntil = 0;
 
     document.getElementById(
         "levelText"
@@ -3588,7 +3529,7 @@ function isCubeOnBlock() {
 
             const player = players[id];
 
-            if (!player)
+            if (!player || Number(player.level) !== Number(selectedLevel))
                 continue;
 
             const playerSize =
@@ -3987,19 +3928,13 @@ nicknameInput.addEventListener("change", () => {
 });
 
 socket.on("connect", () => {
-    socket.emit(
-        "player:name",
-        playerNickname.trim() || "Игрок"
-    );
-
+    socket.emit("player:name", playerNickname.trim() || "Игрок");
     syncPlayerAppearance();
 
-    // Если соединение восстановилось во время игры,
-    // снова входим на выбранный уровень.
-    if (
-        document.getElementById("gameScreen")
-            ?.classList.contains("active")
-    ) {
+    // После переподключения возвращаем игрока в уровень только если
+    // игровая секция сейчас открыта. В главном меню игрок не считается
+    // находящимся в игре и не появляется в списках других игроков.
+    if (document.getElementById("gameScreen")?.classList.contains("active")) {
         socket.emit("player:enter-level", {
             level: selectedLevel,
             nickname: playerNickname
@@ -4052,10 +3987,10 @@ function update() {
 
     const half = cube.size / 2;
 
-    // Защита от огромного падения
+    // Падение за карту: возвращаемся к последнему чекпоинту.
     if (cube.y > 10000) {
         reportPlayerDeath("fall");
-        resetGame();
+        resetGame(true);
         return;
     }
 
@@ -4065,10 +4000,10 @@ function update() {
         if (!isColliding(cube, block))
             continue;
 
-        // Шипы
+        // Шипы: возрождение у последнего активированного чекпоинта.
         if (block.spikes) {
             reportPlayerDeath("spikes");
-            resetGame();
+            resetGame(true);
             return;
         }
 
@@ -4161,7 +4096,7 @@ function update() {
         
             const player = players[id];
         
-            if (!player || !isCollidingWithPlayer(player)) {
+            if (!player || Number(player.level) !== Number(selectedLevel) || !isCollidingWithPlayer(player)) {
                 continue;
             }
         
@@ -4264,12 +4199,62 @@ function update() {
         }
     }
 
+    // Чекпоинт активируется только при реальном касании его маркера.
+    updateCheckpointActivation();
+
     updateCamera();
 
     syncPlayerPosition();
 }
 
 
+
+
+/* =====================================================
+   АКТИВАЦИЯ ЧЕКПОИНТОВ
+===================================================== */
+
+function updateCheckpointActivation() {
+
+    if (!checkpoints.length) return;
+
+    const half = cube.size / 2;
+
+    for (const checkpoint of checkpoints) {
+
+        if (checkpoint.activated) continue;
+
+        // Триггер немного больше куба, чтобы маркер было удобно коснуться.
+        const touching =
+            cube.x + half > checkpoint.x - 38 &&
+            cube.x - half < checkpoint.x + 38 &&
+            cube.y + half > checkpoint.y - 48 &&
+            cube.y - half < checkpoint.y + 48;
+
+        if (!touching) continue;
+
+        checkpoint.activated = true;
+        activeCheckpoint = {
+            level: selectedLevel,
+            id: checkpoint.id,
+            x: checkpoint.spawnX,
+            y: checkpoint.spawnY
+        };
+
+        checkpointNoticeUntil = performance.now() + 1800;
+
+        // Короткий звуковой сигнал активации.
+        if (typeof beep === "function") {
+            beep(880, 0.12, "triangle", 0.04);
+        }
+
+        console.log(
+            `Чекпоинт ${checkpoint.id} активирован на уровне ${selectedLevel}`
+        );
+
+        break;
+    }
+}
 
 
 /* =====================================================
@@ -4334,6 +4319,60 @@ function drawBackground() {
         canvas.width,
         canvas.height
     );
+}
+
+
+/* =====================================================
+   ОТОБРАЖЕНИЕ ЧЕКПОИНТОВ
+===================================================== */
+
+function drawCheckpoints() {
+
+    for (const checkpoint of checkpoints) {
+
+        const x = checkpoint.x - camera.x;
+        const platformY = checkpoint.y + cube.size / 2 - camera.y;
+        const color = checkpoint.activated ? "#39ff9b" : "#ffd45a";
+
+        // Не рисуем очень далёкие маркеры.
+        if (x < -70 || x > canvas.width + 70) continue;
+
+        ctx.save();
+        ctx.globalAlpha = checkpoint.activated ? 1 : 0.8;
+        ctx.strokeStyle = color;
+        ctx.fillStyle = color;
+        ctx.lineWidth = 4;
+        ctx.shadowColor = color;
+        ctx.shadowBlur = checkpoint.activated ? 18 : 10;
+
+        // Флагшток.
+        ctx.beginPath();
+        ctx.moveTo(x, platformY);
+        ctx.lineTo(x, platformY - 68);
+        ctx.stroke();
+
+        // Флажок.
+        ctx.beginPath();
+        ctx.moveTo(x + 1, platformY - 67);
+        ctx.lineTo(x + 31, platformY - 55);
+        ctx.lineTo(x + 1, platformY - 43);
+        ctx.closePath();
+        ctx.fill();
+
+        // Основание маркера.
+        ctx.fillRect(x - 13, platformY - 3, 26, 6);
+
+        ctx.shadowBlur = 0;
+        ctx.font = "bold 11px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText(
+            checkpoint.activated ? "СОХРАНЕНО" : `CP ${checkpoint.id}`,
+            x,
+            platformY - 79
+        );
+
+        ctx.restore();
+    }
 }
 
 
@@ -5114,6 +5153,9 @@ function drawCube() {
     ctx.restore();
 }
 
+
+"16"
+
 /* =====================================================
    КООРДИНАТЫ
 ===================================================== */
@@ -5384,9 +5426,11 @@ function drawOtherPlayers() {
         if (id === socket.id)
             continue;
 
-        drawOtherPlayer(
-            players[id]
-        );
+        const player = players[id];
+        if (!player || Number(player.level) !== Number(selectedLevel))
+            continue;
+
+        drawOtherPlayer(player);
     }
 }
 
@@ -5403,7 +5447,7 @@ function isCollidingWithPlayer(
         return false;
 
 
-    if (!player)
+    if (!player || Number(player.level) !== Number(selectedLevel))
         return false;
 
 
@@ -5442,49 +5486,57 @@ function isCollidingWithPlayer(
    RESET
 ===================================================== */
 
-function resetGame() {
+function resetGame(fromCheckpoint = false) {
 
-    /*
-       Стартовая позиция.
-    */
+    // Без параметра это обычный перезапуск: возвращаемся в начало
+    // и сбрасываем активированные точки текущего уровня.
+    if (!fromCheckpoint) {
+        activeCheckpoint = null;
+        checkpointNoticeUntil = 0;
 
-    cube.x = 200;
-
-    cube.y = 250;
-
-    cube.vx = 0;
-
-    cube.vy = 0;
-
-    cube.dragging = false;
-
-    cube.trail = [];
-
-
-    camera.x = 0;
-
-    camera.y = 0;
-
-
-    /*
-       Убеждаемся, что уровень загружен.
-    */
-
-    if (
-        blocks.length === 0
-    ) {
-
-        loadLevel(
-            selectedLevel
-        );
+        for (const checkpoint of checkpoints) {
+            checkpoint.activated = false;
+        }
     }
 
+    // При смерти используем последнюю активированную точку,
+    // но только если она относится к текущему уровню.
+    const savedCheckpoint =
+        fromCheckpoint &&
+        activeCheckpoint &&
+        activeCheckpoint.level === selectedLevel
+            ? activeCheckpoint
+            : null;
 
-    document.getElementById(
-        "levelText"
-    ).textContent =
-        "Уровень: " +
-        selectedLevel;
+    cube.x = savedCheckpoint ? savedCheckpoint.x : 200;
+    cube.y = savedCheckpoint ? savedCheckpoint.y : 250;
+
+    cube.vx = 0;
+    cube.vy = 0;
+    cube.dragging = false;
+    cube.trail = [];
+
+    if (savedCheckpoint) {
+        // Сразу переносим камеру к точке возрождения.
+        camera.x = Math.max(0, cube.x - canvas.width / 2);
+        camera.y = cube.y - canvas.height / 2;
+    } else {
+        camera.x = 0;
+        camera.y = 0;
+    }
+
+    // Убеждаемся, что уровень загружен.
+    if (blocks.length === 0) {
+        loadLevel(selectedLevel);
+    }
+
+    document.getElementById("levelText").textContent =
+        "Уровень: " + selectedLevel;
+
+    // Сразу отправляем новую позицию на сервер.
+    if (typeof syncPlayerPosition === "function") {
+        syncPlayerPosition();
+    }
 }
 
 
@@ -5561,6 +5613,8 @@ function gameLoop(currentTime) {
 
     drawBlocks();
 
+    drawCheckpoints();
+
     drawOtherPlayers();
 
     drawAim();
@@ -5573,6 +5627,38 @@ function gameLoop(currentTime) {
 
     drawWorldPosition();
 
+    drawCheckpointNotice();
+
+}
+
+
+function drawCheckpointNotice() {
+
+    if (performance.now() > checkpointNoticeUntil) return;
+
+    const remaining = checkpointNoticeUntil - performance.now();
+    const alpha = Math.min(1, remaining / 350);
+    const width = Math.min(320, canvas.width - 36);
+    const height = 46;
+    const x = (canvas.width - width) / 2;
+    const y = 48;
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = "rgba(8, 20, 28, 0.9)";
+    ctx.strokeStyle = "#39ff9b";
+    ctx.lineWidth = 2;
+    ctx.shadowColor = "#39ff9b";
+    ctx.shadowBlur = 14;
+    ctx.fillRect(x, y, width, height);
+    ctx.strokeRect(x, y, width, height);
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = "#7dffbd";
+    ctx.font = "bold 15px Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("CHECKPOINT СОХРАНЁН!", canvas.width / 2, y + height / 2);
+    ctx.restore();
 }
 
 requestAnimationFrame(gameLoop);
