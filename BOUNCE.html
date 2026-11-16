@@ -3396,8 +3396,8 @@ function createLevel5() {
 // spawnX/spawnY — безопасная позиция, куда куб вернётся после смерти.
 const CHECKPOINTS_BY_LEVEL = {
     1: [
-        { id: 1, x: 2550, y: 468, spawnX: 2600, spawnY: 468 },
-        { id: 2, x: 1800, y: 1468, spawnX: 1850, spawnY: 1468 }
+        { id: 1, x: 2600, y: 468, spawnX: 2600, spawnY: 468 },
+        { id: 2, x: 1450, y: 1968, spawnX: 1450, spawnY: 1968 }
     ],
     2: [
         { id: 1, x: 400, y: 468, spawnX: 450, spawnY: 468 },
@@ -4345,17 +4345,16 @@ function drawCheckpoints() {
         ctx.shadowColor = color;
         ctx.shadowBlur = checkpoint.activated ? 18 : 10;
 
-        // Флагшток.
-        ctx.beginPath();
-        ctx.moveTo(x, platformY);
-        ctx.lineTo(x, platformY - 68);
-        ctx.stroke();
-
         // Флажок.
         ctx.beginPath();
-        ctx.moveTo(x + 1, platformY - 67);
-        ctx.lineTo(x + 31, platformY - 55);
-        ctx.lineTo(x + 1, platformY - 43);
+        ctx.moveTo(x - 20, platformY);
+        ctx.lineTo(x - 5, platformY + 5);
+        ctx.lineTo(x, platformY + 20);
+        ctx.lineTo(x + 5, platformY + 5);
+        ctx.lineTo(x + 20, platformY);
+        ctx.lineTo(x + 5, platformY - 5);
+        ctx.lineTo(x, platformY - 20);
+        ctx.lineTo(x - 5, platformY - 5);
         ctx.closePath();
         ctx.fill();
 
