@@ -825,6 +825,21 @@ input[type="range"] {
     }
 }
 
+.level-btn.locked,
+.level-btn:disabled {
+    opacity: .48;
+    cursor: not-allowed;
+    border-style: dashed;
+    filter: grayscale(.6);
+}
+
+.main-btn:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+    filter: grayscale(.7);
+    transform: none;
+}
+
 </style>
 </head>
 
@@ -2455,6 +2470,98 @@ document.addEventListener(
 
 
 /* =====================================================
+   СТАТУС ДОСТУПА К УРОВНЯМ
+===================================================== */
+
+function updateLevelLockUI() {
+    document.querySelectorAll(".level-btn").forEach(button => {
+        const level = Number(button.dataset.level);
+        const locked = isLevelLocked(level);
+        const nameElement = button.querySelector(".level-name");
+
+        if (nameElement) {
+            if (!nameElement.dataset.originalName) {
+                nameElement.dataset.originalName =
+                    nameElement.textContent.trim();
+            }
+
+            nameElement.textContent = locked
+                ? nameElement.dataset.originalName + " · LOCKED"
+                : nameElement.dataset.originalName;
+        }
+
+        button.disabled = locked;
+        button.classList.toggle("locked", locked);
+
+        button.title = locked
+            ? "Уровень ещё не готов и закрыт для игроков"
+            : "Открыть уровень";
+
+        if (locked) {
+            button.classList.remove("selected");
+        }
+    });
+
+    const startButton = document.getElementById("startButton");
+
+    if (startButton) {
+        const locked = isLevelLocked(selectedLevel);
+
+        startButton.disabled = locked;
+        startButton.textContent = locked
+            ? "🔒 LEVEL LOCKED"
+            : "▶ START";
+    }
+}
+
+function applyLevelAccess(levels) {
+    if (!Array.isArray(levels)) return;
+
+    for (const item of levels) {
+        const level = Number(item?.level);
+
+        if (!Number.isInteger(level) || level < 1 || level > 5) {
+            continue;
+        }
+
+        LEVEL_LOCKED[level] = item.locked === true;
+    }
+
+    updateLevelLockUI();
+}
+
+async function loadLevelAccess() {
+    try {
+        const response = await fetch("/api/levels", {
+            method: "GET",
+            cache: "no-store",
+            credentials: "include",
+            headers: {
+                Accept: "application/json"
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        applyLevelAccess(await response.json());
+    } catch (error) {
+        console.error(
+            "Не удалось загрузить статус уровней:",
+            error
+        );
+
+        updateLevelLockUI();
+    }
+}
+
+socket.on("levels:config", applyLevelAccess);
+
+loadLevelAccess();
+
+
+/* =====================================================
 ВЫБОР УРОВНЯ
 ===================================================== */
 
@@ -2465,6 +2572,13 @@ document
 button.addEventListener(
     "click",
     () => {
+
+        const requestedLevel = Number(button.dataset.level);
+
+        if (isLevelLocked(requestedLevel)) {
+            alert("Этот уровень ещё не готов и пока закрыт для игроков.");
+            return;
+        }
 
         selectedLevel =
             Number(
@@ -2507,6 +2621,12 @@ document.getElementById("startButton")
 .addEventListener(
 "click",
 () => {
+
+    if (isLevelLocked(selectedLevel)) {
+        alert("Этот уровень ещё не готов и закрыт для игроков.");
+        updateLevelLockUI();
+        return;
+    }
 
     menu.classList.remove(
         "active"
@@ -2559,6 +2679,21 @@ menu.classList.add(
 // В меню каталог снова загружается по выбранной карте.
 loadPlayers(playerSearch?.value ?? "");
 }
+
+socket.on("level:locked", data => {
+    const level = Number(data?.level) || selectedLevel;
+
+    const message = data?.message ||
+        `Уровень ${level} пока закрыт.`;
+
+    if (gameScreen.classList.contains("active")) {
+        backToMenu();
+    }
+
+    alert(message);
+});
+
+updateLevelLockUI();
 
 
 /* =====================================================
@@ -2666,6 +2801,21 @@ let blocks = [];
 let checkpoints = [];
 let activeCheckpoint = null;
 let checkpointNoticeUntil = 0;
+
+
+// true — уровень закрыт, false — открыт.
+// Окончательные значения загружаются с сервера.
+let LEVEL_LOCKED = {
+    1: false,
+    2: true,
+    3: true,
+    4: true,
+    5: true
+};
+
+function isLevelLocked(level) {
+    return LEVEL_LOCKED[Number(level)] === true;
+}
 
 
 /* =====================================================
@@ -4362,7 +4512,7 @@ function drawCheckpoints() {
         ctx.font = "bold 11px Arial";
         ctx.textAlign = "center";
         ctx.fillText(
-            checkpoint.activated ? "SAVED" : `CP ${checkpoint.id}`,
+            checkpoint.activated ? "SAVED" : `checkpoint ${checkpoint.id}`,
             x,
             platformY - 79
         );
