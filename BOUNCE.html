@@ -4226,10 +4226,10 @@ function updateCheckpointActivation() {
 
         // Триггер немного больше куба, чтобы маркер было удобно коснуться.
         const touching =
-            cube.x + half > checkpoint.x - 38 &&
-            cube.x - half < checkpoint.x + 38 &&
-            cube.y + half > checkpoint.y - 48 &&
-            cube.y - half < checkpoint.y + 48;
+            cube.x + half > checkpoint.x - 150 &&
+            cube.x - half < checkpoint.x + 150 &&
+            cube.y + half > checkpoint.y - 150 &&
+            cube.y - half < checkpoint.y + 150;
 
         if (!touching) continue;
 
