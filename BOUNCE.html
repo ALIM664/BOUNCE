@@ -51,6 +51,7 @@ button, input {
 }
 
 .menu-box {
+    position: relative;
     width: min(1100px, 94vw);
     max-height: 94vh;
     overflow-y: auto;
@@ -75,6 +76,152 @@ button, input {
 .logo p {
     margin: 8px 0 0;
     color: #8993ad;
+}
+
+/* ИНФОРМАЦИЯ ОБ ИГРЕ */
+.menu-info-top {
+    display: flex;
+    justify-content: flex-end;
+    margin: -8px 0 12px;
+}
+
+.info-open-btn {
+    padding: 10px 15px;
+    border: 1px solid rgba(120, 145, 255, .38);
+    border-radius: 10px;
+    background: #202945;
+    color: #dce5ff;
+    font-weight: bold;
+    cursor: pointer;
+    transition: .18s;
+}
+
+.info-open-btn:hover {
+    border-color: #7c91ff;
+    background: #2b385d;
+    color: white;
+}
+
+.info-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 18px;
+    background: rgba(3, 6, 15, .78);
+    backdrop-filter: blur(7px);
+}
+
+.info-modal.is-open {
+    display: flex;
+}
+
+.info-card {
+    width: min(560px, 100%);
+    max-height: min(680px, 90vh);
+    overflow-y: auto;
+    padding: 24px;
+    border: 1px solid rgba(130, 151, 255, .32);
+    border-radius: 18px;
+    background: linear-gradient(145deg, #202944, #111827);
+    box-shadow: 0 24px 80px rgba(0, 0, 0, .6);
+}
+
+.info-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 18px;
+}
+
+.info-card-header h2 {
+    margin: 0;
+    font-size: 22px;
+}
+
+.info-close-btn {
+    width: 36px;
+    height: 36px;
+    border: 1px solid rgba(255,255,255,.14);
+    border-radius: 9px;
+    background: rgba(255,255,255,.06);
+    color: white;
+    font-size: 22px;
+    cursor: pointer;
+}
+
+.info-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.info-tab {
+    padding: 11px 8px;
+    border: 1px solid rgba(145, 164, 255, .2);
+    border-radius: 9px;
+    background: #151d30;
+    color: #aebbdc;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.info-tab:hover,
+.info-tab.active {
+    border-color: #788fff;
+    background: #303b64;
+    color: white;
+}
+
+.info-content {
+    min-height: 150px;
+    padding: 18px;
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 12px;
+    background: rgba(6, 11, 23, .48);
+    color: #c6d0e8;
+    font-size: 14px;
+    line-height: 1.7;
+}
+
+.info-content h3 {
+    margin: 0 0 10px;
+    color: #8feaff;
+    font-size: 17px;
+}
+
+.info-content p {
+    margin: 7px 0;
+}
+
+.info-content ul {
+    margin: 8px 0 0;
+    padding-left: 21px;
+}
+
+.info-note {
+    color: #8998bd;
+    font-size: 12px;
+}
+
+@media (max-width: 480px) {
+    .info-card {
+        padding: 17px;
+    }
+
+    .info-tabs {
+        grid-template-columns: 1fr;
+    }
+
+    .info-content {
+        min-height: 130px;
+        padding: 14px;
+    }
 }
 
 .editor {
@@ -266,6 +413,21 @@ input[type="range"] {
     border-color: #6675ff;
     background: #30375c;
     box-shadow: 0 0 20px rgba(102,117,255,.25);
+}
+
+.level-btn.locked,
+.level-btn:disabled {
+    opacity: .48;
+    cursor: not-allowed;
+    border-style: dashed;
+    filter: grayscale(.6);
+}
+
+.main-btn:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+    filter: grayscale(.7);
+    transform: none;
 }
 
 .level-number {
@@ -825,21 +987,6 @@ input[type="range"] {
     }
 }
 
-.level-btn.locked,
-.level-btn:disabled {
-    opacity: .48;
-    cursor: not-allowed;
-    border-style: dashed;
-    filter: grayscale(.6);
-}
-
-.main-btn:disabled {
-    opacity: .5;
-    cursor: not-allowed;
-    filter: grayscale(.7);
-    transform: none;
-}
-
 </style>
 </head>
 
@@ -852,6 +999,16 @@ input[type="range"] {
 <section id="menu" class="screen active">
 
     <div class="menu-box">
+
+        <div class="menu-info-top">
+            <button
+                type="button"
+                class="info-open-btn"
+                id="openInfoButton"
+            >
+                ⓘ ИНФОРМАЦИЯ
+            </button>
+        </div>
 
         <div class="logo">
             <h1>BOUNCE</h1>
@@ -1110,6 +1267,51 @@ input[type="range"] {
             ▶ START
         </button>
 
+    </div>
+
+    <div
+        class="info-modal"
+        id="infoModal"
+        aria-hidden="true"
+    >
+        <div
+            class="info-card"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="infoModalTitle"
+        >
+            <div class="info-card-header">
+                <h2 id="infoModalTitle">Информация об игре</h2>
+                <button
+                    type="button"
+                    class="info-close-btn"
+                    id="closeInfoButton"
+                    aria-label="Закрыть"
+                >
+                    ×
+                </button>
+            </div>
+
+            <div class="info-tabs">
+                <button type="button" class="info-tab active" data-info="blocks">Блоки</button>
+                <button type="button" class="info-tab" data-info="author">Автор</button>
+                <button type="button" class="info-tab" data-info="version">Версия</button>
+            </div>
+
+            <div class="info-content" id="infoContent" aria-live="polite">
+                <h3>Блоки</h3>
+                <p>типы объектов:</p>
+                <ul>
+                    <li>у платформ разный уровень отскока:</li>
+                    <li style="color: #00ff00;">0</li>
+                    <li style="color: #99ff00;">0.25</li>
+                    <li style="color: #ffff00;">0.5</li>
+                    <li style="color: #ff9900;">0.75</li>
+                    <li style="color: #ff0000;">1</li>
+                    <li>Шипы — опасные объекты.</li>
+                </ul>
+            </div>
+        </div>
     </div>
 
     <input
@@ -1687,97 +1889,54 @@ function rgbToHex(r,g,b) {
    отдельно для каждого пикселя.
 */
 
-function clampPercent(value, fallback = 0) {
-    const number = Number(value);
+function getMixedColor() {
 
-    if (!Number.isFinite(number)) {
-        return Math.max(0, Math.min(100, Number(fallback) || 0));
-    }
+    const a =
+        hexToRgb(color1.value);
 
-    return Math.max(0, Math.min(100, number));
-}
+    const b =
+        hexToRgb(color2.value);
 
+    const m =
+        Number(mix.value) / 100;
 
-function getMixedColor(settings = {}) {
-    const a = hexToRgb(color1.value);
-    const b = hexToRgb(color2.value);
+    let r =
+        a.r * (1-m) +
+        b.r * m;
 
-    const m = clampPercent(settings.mix ?? mix.value) / 100;
-    const l = clampPercent(settings.light ?? light.value) / 100;
-    const d = clampPercent(settings.dark ?? dark.value) / 100;
-    const o = clampPercent(settings.opacity ?? opacity.value) / 100;
+    let g =
+        a.g * (1-m) +
+        b.g * m;
 
-    let r = a.r * (1 - m) + b.r * m;
-    let g = a.g * (1 - m) + b.g * m;
-    let bl = a.b * (1 - m) + b.b * m;
+    let bl =
+        a.b * (1-m) +
+        b.b * m;
 
-    r += (255 - r) * l;
-    g += (255 - g) * l;
-    bl += (255 - bl) * l;
+    const l =
+        Number(light.value) / 100;
 
-    r *= 1 - d;
-    g *= 1 - d;
-    bl *= 1 - d;
+    r += (255-r) * l;
+    g += (255-g) * l;
+    bl += (255-bl) * l;
+
+    const d =
+        Number(dark.value) / 100;
+
+    r *= 1-d;
+    g *= 1-d;
+    bl *= 1-d;
 
     return {
+
         r: Math.round(r),
+
         g: Math.round(g),
+
         b: Math.round(bl),
-        a: o
+
+        a: Number(opacity.value) / 100
+
     };
-}
-
-
-function createPixelData(settings = {}) {
-    const recipe = {
-        recipeVersion: 1,
-        mix: clampPercent(settings.mix ?? mix.value),
-        light: clampPercent(settings.light ?? light.value),
-        dark: clampPercent(settings.dark ?? dark.value),
-        opacity: clampPercent(settings.opacity ?? opacity.value)
-    };
-
-    const color = getMixedColor(recipe);
-
-    return {
-        ...color,
-        ...recipe
-    };
-}
-
-
-function recolorPaintedPixels(save = false) {
-    let changed = false;
-
-    for (let y = 0; y < GRID; y++) {
-        for (let x = 0; x < GRID; x++) {
-            const pixel = pixels[y][x];
-            if (!pixel) continue;
-
-            let settings;
-            if (pixel.recipeVersion === 1) {
-                settings = pixel;
-            } else {
-                const oldAlpha = Number(pixel.a);
-                settings = {
-                    mix: mix.value,
-                    light: light.value,
-                    dark: dark.value,
-                    opacity: Number.isFinite(oldAlpha)
-                        ? oldAlpha * 100
-                        : opacity.value
-                };
-            }
-
-            pixels[y][x] = createPixelData(settings);
-            changed = true;
-        }
-    }
-
-    if (!changed) return;
-
-    drawPixelGrid();
-    if (save) saveCube();
 }
 
 
@@ -1861,20 +2020,21 @@ function updateColor() {
 }
 
 
-[color1, color2].forEach(element => {
-    element.addEventListener("input", () => {
-        updateColor();
-        recolorPaintedPixels(false);
-    });
+[
+    color1,
+    color2,
+    mix,
+    light,
+    dark,
+    opacity
+]
+.forEach(element => {
 
-    element.addEventListener("change", () => {
-        updateColor();
-        recolorPaintedPixels(true);
-    });
-});
+    element.addEventListener(
+        "input",
+        updateColor
+    );
 
-[mix, light, dark, opacity].forEach(element => {
-    element.addEventListener("input", updateColor);
 });
 
 
@@ -2118,19 +2278,19 @@ try {
             }
 
 
-            if (pixel.recipeVersion === 1) {
-                pixels[y][x] = createPixelData(pixel);
-            } else {
-                const oldAlpha = Number(pixel.a);
-                pixels[y][x] = createPixelData({
-                    mix: mix.value,
-                    light: light.value,
-                    dark: dark.value,
-                    opacity: Number.isFinite(oldAlpha)
-                        ? oldAlpha * 100
-                        : opacity.value
-                });
-            }
+            pixels[y][x] = {
+
+                r: Number(pixel.r) || 0,
+
+                g: Number(pixel.g) || 0,
+
+                b: Number(pixel.b) || 0,
+
+                a:
+                    pixel.a == null
+                        ? 1
+                        : Number(pixel.a)
+            };
         }
     }
 
@@ -2198,7 +2358,8 @@ if (
    собственную alpha.
 */
 
-pixels[py][px] = createPixelData();
+pixels[py][px] =
+    getMixedColor();
 
 
 drawPixelGrid();
@@ -2247,9 +2408,22 @@ document.getElementById("fillBtn")
 "click",
 () => {
 
+    const color =
+        getMixedColor();
+
+
     for (let y = 0; y < GRID; y++) {
+
         for (let x = 0; x < GRID; x++) {
-            pixels[y][x] = createPixelData();
+
+            /*
+               Создаём отдельную копию,
+               чтобы каждый пиксель имел
+               собственное значение.
+            */
+
+            pixels[y][x] =
+                { ...color };
         }
     }
 
@@ -2473,17 +2647,6 @@ document.addEventListener(
    СТАТУС ДОСТУПА К УРОВНЯМ
 ===================================================== */
 
-
-// true — уровень закрыт, false — открыт.
-// Окончательные значения загружаются с сервера.
-let LEVEL_LOCKED = {
-    1: false,
-    2: true,
-    3: true,
-    4: true,
-    5: true
-};
-
 function updateLevelLockUI() {
     document.querySelectorAll(".level-btn").forEach(button => {
         const level = Number(button.dataset.level);
@@ -2492,8 +2655,7 @@ function updateLevelLockUI() {
 
         if (nameElement) {
             if (!nameElement.dataset.originalName) {
-                nameElement.dataset.originalName =
-                    nameElement.textContent.trim();
+                nameElement.dataset.originalName = nameElement.textContent.trim();
             }
 
             nameElement.textContent = locked
@@ -2503,28 +2665,56 @@ function updateLevelLockUI() {
 
         button.disabled = locked;
         button.classList.toggle("locked", locked);
-
         button.title = locked
             ? "Уровень ещё не готов и закрыт для игроков"
             : "Открыть уровень";
 
-        if (locked) {
-            button.classList.remove("selected");
-        }
+        if (locked) button.classList.remove("selected");
     });
 
     const startButton = document.getElementById("startButton");
-
     if (startButton) {
         const locked = isLevelLocked(selectedLevel);
-
         startButton.disabled = locked;
-        startButton.textContent = locked
-            ? "🔒 LEVEL LOCKED"
-            : "▶ START";
+        startButton.textContent = locked ? "🔒 LEVEL LOCKED" : "▶ START";
+        startButton.title = locked
+            ? "Этот уровень пока закрыт"
+            : "Начать игру";
     }
-}   
+}
 
+function applyLevelAccess(levels) {
+    if (!Array.isArray(levels)) return;
+
+    for (const item of levels) {
+        const level = Number(item?.level);
+        if (!Number.isInteger(level) || level < 1 || level > 5) continue;
+        LEVEL_LOCKED[level] = item.locked === true;
+    }
+
+    updateLevelLockUI();
+}
+
+async function loadLevelAccess() {
+    try {
+        const response = await fetch("/api/levels", {
+            method: "GET",
+            cache: "no-store",
+            credentials: "include",
+            headers: { Accept: "application/json" }
+        });
+
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        applyLevelAccess(await response.json());
+    } catch (error) {
+        console.error("Не удалось загрузить статус уровней:", error);
+        // Сервер всё равно отклонит вход на закрытую карту.
+        updateLevelLockUI();
+    }
+}
+
+socket.on("levels:config", applyLevelAccess);
+loadLevelAccess();
 
 /* =====================================================
 ВЫБОР УРОВНЯ
@@ -2539,16 +2729,12 @@ button.addEventListener(
     () => {
 
         const requestedLevel = Number(button.dataset.level);
-
         if (isLevelLocked(requestedLevel)) {
             alert("Этот уровень ещё не готов и пока закрыт для игроков.");
             return;
         }
 
-        selectedLevel =
-            Number(
-                button.dataset.level
-            );
+        selectedLevel = requestedLevel;
 
 
         document
@@ -2565,6 +2751,7 @@ button.addEventListener(
             "selected"
         );
 
+        updateLevelLockUI();
         loadPlayers(playerSearch?.value ?? "");
     }
 );
@@ -2645,7 +2832,17 @@ menu.classList.add(
 loadPlayers(playerSearch?.value ?? "");
 }
 
-updateLevelLockUI();
+// Защита на случай ручного Socket.IO-запроса или устаревшего клиента.
+socket.on("level:locked", data => {
+    const level = Number(data?.level) || selectedLevel;
+    const message = data?.message || `Уровень ${level} пока закрыт.`;
+
+    if (gameScreen.classList.contains("active")) {
+        backToMenu();
+    }
+
+    alert(message);
+});
 
 
 /* =====================================================
@@ -2753,6 +2950,20 @@ let blocks = [];
 let checkpoints = [];
 let activeCheckpoint = null;
 let checkpointNoticeUntil = 0;
+
+/* =====================================================
+   LOCKED — СТАТУС ДОСТУПА К УРОВНЯМ
+===================================================== */
+
+// Значения приходят с сервера из serverbounce.js.
+// На сервере true означает закрытый уровень, false — открытый.
+let LEVEL_LOCKED = {
+    1: false,
+    2: true,
+    3: true,
+    4: true,
+    5: true
+};
 
 function isLevelLocked(level) {
     return LEVEL_LOCKED[Number(level)] === true;
@@ -3487,8 +3698,9 @@ function createLevel5() {
 // spawnX/spawnY — безопасная позиция, куда куб вернётся после смерти.
 const CHECKPOINTS_BY_LEVEL = {
     1: [
-        { id: 1, x: 2600, y: 350, spawnX: 2600, spawnY: 468 },
-        { id: 2, x: 1450, y: 1850, spawnX: 1450, spawnY: 1968 }
+        { id: 1, x: 600, y: 168, spawnX: 650, spawnY: 168 },
+        { id: 2, x: 1450, y: 768, spawnX: 1500, spawnY: 768 },
+        { id: 3, x: 1800, y: 1468, spawnX: 1850, spawnY: 1468 }
     ],
     2: [
         { id: 1, x: 400, y: 468, spawnX: 450, spawnY: 468 },
@@ -4080,7 +4292,6 @@ function update() {
 
     // Падение за карту: возвращаемся к последнему чекпоинту.
     if (cube.y > 10000) {
-        reportPlayerDeath("fall");
         resetGame(true);
         return;
     }
@@ -4093,7 +4304,6 @@ function update() {
 
         // Шипы: возрождение у последнего активированного чекпоинта.
         if (block.spikes) {
-            reportPlayerDeath("spikes");
             resetGame(true);
             return;
         }
@@ -4317,10 +4527,10 @@ function updateCheckpointActivation() {
 
         // Триггер немного больше куба, чтобы маркер было удобно коснуться.
         const touching =
-            cube.x + half > checkpoint.x - 150 &&
-            cube.x - half < checkpoint.x + 150 &&
-            cube.y + half > checkpoint.y - 150 &&
-            cube.y - half < checkpoint.y + 150;
+            cube.x + half > checkpoint.x - 38 &&
+            cube.x - half < checkpoint.x + 38 &&
+            cube.y + half > checkpoint.y - 48 &&
+            cube.y - half < checkpoint.y + 48;
 
         if (!touching) continue;
 
@@ -4436,24 +4646,28 @@ function drawCheckpoints() {
         ctx.shadowColor = color;
         ctx.shadowBlur = checkpoint.activated ? 18 : 10;
 
+        // Флагшток.
+        ctx.beginPath();
+        ctx.moveTo(x, platformY);
+        ctx.lineTo(x, platformY - 68);
+        ctx.stroke();
+
         // Флажок.
         ctx.beginPath();
-        ctx.moveTo(x - 20, platformY);
-        ctx.lineTo(x - 5, platformY + 5);
-        ctx.lineTo(x, platformY + 20);
-        ctx.lineTo(x + 5, platformY + 5);
-        ctx.lineTo(x + 20, platformY);
-        ctx.lineTo(x + 5, platformY - 5);
-        ctx.lineTo(x, platformY - 20);
-        ctx.lineTo(x - 5, platformY - 5);
+        ctx.moveTo(x + 1, platformY - 67);
+        ctx.lineTo(x + 31, platformY - 55);
+        ctx.lineTo(x + 1, platformY - 43);
         ctx.closePath();
         ctx.fill();
+
+        // Основание маркера.
+        ctx.fillRect(x - 13, platformY - 3, 26, 6);
 
         ctx.shadowBlur = 0;
         ctx.font = "bold 11px Arial";
         ctx.textAlign = "center";
         ctx.fillText(
-            checkpoint.activated ? "SAVED" : `checkpoint ${checkpoint.id}`,
+            checkpoint.activated ? "СОХРАНЕНО" : `CP ${checkpoint.id}`,
             x,
             platformY - 79
         );
@@ -5744,7 +5958,7 @@ function drawCheckpointNotice() {
     ctx.font = "bold 15px Arial";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText("CHECKPOINT SAVED!", canvas.width / 2, y + height / 2);
+    ctx.fillText("CHECKPOINT СОХРАНЁН!", canvas.width / 2, y + height / 2);
     ctx.restore();
 }
 
@@ -5756,6 +5970,97 @@ loadCube();
 // Отправляем куб сразу после загрузки сохранённого рисунка.
 syncPlayerAppearance();
 
+/* =====================================================
+   ИНФОРМАЦИЯ ОБ ИГРЕ
+===================================================== */
+
+const openInfoButton = document.getElementById("openInfoButton");
+const closeInfoButton = document.getElementById("closeInfoButton");
+const infoModal = document.getElementById("infoModal");
+const infoContent = document.getElementById("infoContent");
+const infoTabs = document.querySelectorAll(".info-tab");
+
+// Эти значения можно изменить под свою сборку игры.
+const GAME_INFO = {
+    author: "♦♦♦BENprogrammer♦♦♦",
+    version: "0.1.0"
+};
+
+const GAME_INFO_SECTIONS = {
+    blocks: `
+        <h3>Блоки</h3>
+        <p>типы объектов:</p>
+        <ul>
+            <li>у платформ разный уровень отскока:</li>
+            <li style="color: #00ff00;">0</li>
+            <li style="color: #99ff00;">0.25</li>
+            <li style="color: #ffff00;">0.5</li>
+            <li style="color: #ff9900;">0.75</li>
+            <li style="color: #ff0000;">1</li>
+            <li>Шипы — опасные объекты.</li>
+        </ul>
+    `,
+    author: `
+        <h3>Автор игры</h3>
+        <p><b>${GAME_INFO.author}</b></p>
+        <p class="info-note">Разработка и обновление проекта BOUNCE.</p>
+    `,
+    version: `
+        <h3>Версия игры</h3>
+        <p><b>BOUNCE ${GAME_INFO.version}</b></p>
+        <p class="info-note">Обновления выходят часто.</p>
+    `
+};
+
+function showGameInfo(section = "blocks") {
+    if (!GAME_INFO_SECTIONS[section]) return;
+
+    infoContent.innerHTML = GAME_INFO_SECTIONS[section];
+
+    infoTabs.forEach(tab => {
+        tab.classList.toggle(
+            "active",
+            tab.dataset.info === section
+        );
+    });
+}
+
+function openGameInfo() {
+    showGameInfo("blocks");
+    infoModal.classList.add("is-open");
+    infoModal.setAttribute("aria-hidden", "false");
+}
+
+function closeGameInfo() {
+    infoModal.classList.remove("is-open");
+    infoModal.setAttribute("aria-hidden", "true");
+}
+
+openInfoButton.addEventListener("click", openGameInfo);
+closeInfoButton.addEventListener("click", closeGameInfo);
+
+infoTabs.forEach(tab => {
+    tab.addEventListener("click", () => {
+        showGameInfo(tab.dataset.info);
+    });
+});
+
+// Закрываем окно нажатием на затемнённую область.
+infoModal.addEventListener("click", event => {
+    if (event.target === infoModal) {
+        closeGameInfo();
+    }
+});
+
+// И клавишей Escape.
+document.addEventListener("keydown", event => {
+    if (
+        event.key === "Escape" &&
+        infoModal.classList.contains("is-open")
+    ) {
+        closeGameInfo();
+    }
+});
 
 </script>
 
