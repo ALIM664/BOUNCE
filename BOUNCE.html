@@ -987,6 +987,101 @@ input[type="range"] {
     }
 }
 
+.info-note {
+    color: #8998bd;
+    font-size: 12px;
+}
+
+/* МУЗЫКАЛЬНЫЙ ПЛЕЕР */
+
+.music-info-list {
+    display: grid;
+    gap: 7px;
+    margin: 12px 0 16px;
+}
+
+.music-info-track {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    border: 1px solid #35415f;
+    border-radius: 9px;
+    background: #111a2c;
+    color: white;
+    cursor: pointer;
+    text-align: left;
+}
+
+.music-info-track.active {
+    border-color: #8feaff;
+    background: #28375b;
+}
+
+.music-info-track small {
+    display: block;
+    margin-top: 4px;
+    color: #9aa9ce;
+}
+
+.music-player-box {
+    padding: 15px;
+    border: 1px solid #35415f;
+    border-radius: 12px;
+    background: #0d1528;
+}
+
+.music-player-title {
+    font-weight: bold;
+    font-size: 16px;
+}
+
+.music-player-artist {
+    margin-top: 5px;
+    color: #9aa9ce;
+    font-size: 12px;
+}
+
+.music-seek-row {
+    display: grid;
+    grid-template-columns: 42px 1fr 42px;
+    align-items: center;
+    gap: 8px;
+    margin: 15px 0;
+}
+
+.music-time {
+    font-size: 11px;
+    color: #9aa9ce;
+    text-align: center;
+}
+
+#infoMusicSeek {
+    width: 100%;
+    accent-color: #8feaff;
+}
+
+.music-player-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.music-player-btn {
+    flex: 1;
+    padding: 11px;
+    border: 1px solid #35415f;
+    border-radius: 9px;
+    background: #27385b;
+    color: white;
+    cursor: pointer;
+}
+
+.music-player-btn:disabled {
+    opacity: .4;
+    cursor: not-allowed;
+}
+
 </style>
 </head>
 
@@ -1296,6 +1391,7 @@ input[type="range"] {
                 <button type="button" class="info-tab active" data-info="blocks">Блоки</button>
                 <button type="button" class="info-tab" data-info="author">Автор</button>
                 <button type="button" class="info-tab" data-info="version">Версия</button>
+                <button type="button" class="info-tab" data-info="music">Музыка</button>
             </div>
 
             <div class="info-content" id="infoContent" aria-live="polite">
@@ -4526,10 +4622,10 @@ function updateCheckpointActivation() {
 
         // Триггер немного больше куба, чтобы маркер было удобно коснуться.
         const touching =
-            cube.x + half > checkpoint.x - 38 &&
-            cube.x - half < checkpoint.x + 38 &&
-            cube.y + half > checkpoint.y - 48 &&
-            cube.y - half < checkpoint.y + 48;
+            cube.x + half > checkpoint.x - 100 &&
+            cube.x - half < checkpoint.x + 100 &&
+            cube.y + half > checkpoint.y - 100 &&
+            cube.y - half < checkpoint.y + 100;
 
         if (!touching) continue;
 
@@ -5985,6 +6081,57 @@ const GAME_INFO = {
     version: "0.1.0"
 };
 
+const GAME_MUSIC_INFO = [
+    {
+        artist: "INFEKT",
+        title: "Tendo",
+        file: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/Infekt_-_Tendo_%28SkySound7.com%29.mp3",
+        downloadUrl: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/Infekt_-_Tendo_%28SkySound7.com%29.mp3"
+    },
+    {
+        artist: "ParagonX9",
+        title: "Infiltration",
+        file: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/157014_ParagonX9___Infiltration.mp3",
+        downloadUrl: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/157014_ParagonX9___Infiltration.mp3"
+    },
+    {
+        artist: "Timmy Trumpet & Savage",
+        title: "Freaks",
+        file: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/1221458_Timmy-Trumpet-amp-Savage--.mp3",
+        downloadUrl: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/1221458_Timmy-Trumpet-amp-Savage--.mp3"
+    },
+    {
+        artist: "NIVIRO",
+        title: "The Ghost",
+        file: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/NIVIRO - The Ghost [NCS Release].mp3",
+        downloadUrl: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/NIVIRO - The Ghost [NCS Release].mp3"
+    },
+    {
+        artist: "INFEKT",
+        title: "Into Pieces",
+        file: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/Infekt_-_Into_Pieces_(SkySound7.com).mp3",
+        downloadUrl: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/Infekt_-_Into_Pieces_(SkySound7.com).mp3"
+    },
+    {
+        artist: "_",
+        title: "Electro World",
+        file: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/Electro World.mp3",
+        downloadUrl: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/Electro World.mp3"
+    },
+    {
+        artist: "_",
+        title: "Agent 64",
+        file: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/Agent 64.mp3",
+        downloadUrl: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/Agent 64.mp3"
+    },
+    {
+        artist: "_",
+        title: "Dubsteper",
+        file: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/Dubsteper.mp3",
+        downloadUrl: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/Dubsteper.mp3"
+    }
+];
+
 const GAME_INFO_SECTIONS = {
     blocks: `
         <h3>Блоки</h3>
@@ -6008,11 +6155,285 @@ const GAME_INFO_SECTIONS = {
         <h3>Версия игры</h3>
         <p><b>BOUNCE ${GAME_INFO.version}</b></p>
         <p class="info-note">Обновления выходят часто.</p>
+    `,
+    music: `
+        <h3>Музыка BOUNCE</h3>
+        <p>Музыкальные композиции, используемые в уровнях игры.</p>
+        <div id="infoMusicApp"></div>
     `
 };
 
+
+const infoMusicAudio = new Audio();
+infoMusicAudio.preload = "metadata";
+
+let infoMusicCurrentTrack = null;
+
+function formatMusicTime(seconds) {
+    if (!Number.isFinite(seconds)) return "0:00";
+
+    const value = Math.floor(seconds);
+    const minutes = Math.floor(value / 60);
+    const remaining = value % 60;
+
+    return `${minutes}:${String(remaining).padStart(2, "0")}`;
+}
+
+function updateMusicPlayer() {
+    const seek = document.getElementById("infoMusicSeek");
+    const playButton = document.getElementById("infoMusicPlay");
+    const currentTime = document.getElementById("infoMusicCurrentTime");
+    const endTime = document.getElementById("infoMusicEndTime");
+
+    if (!seek) return;
+
+    const duration = Number.isFinite(infoMusicAudio.duration)
+        ? infoMusicAudio.duration
+        : 0;
+
+    seek.max = String(Math.max(1, duration));
+    seek.value = String(infoMusicAudio.currentTime || 0);
+
+    currentTime.textContent = formatMusicTime(
+        infoMusicAudio.currentTime || 0
+    );
+
+    endTime.textContent = formatMusicTime(duration);
+
+    playButton.textContent = infoMusicAudio.paused
+        ? "▶ Играть"
+        : "Ⅱ Пауза";
+}
+
+function selectMusicTrack(index) {
+    const track = GAME_MUSIC_INFO[index];
+    if (!track) return;
+
+    infoMusicAudio.pause();
+    infoMusicCurrentTrack = track;
+
+    document.querySelectorAll(".music-info-track").forEach(button => {
+        button.classList.toggle(
+            "active",
+            Number(button.dataset.trackIndex) === index
+        );
+    });
+
+    document.getElementById("infoMusicTitle").textContent =
+        track.title;
+
+    document.getElementById("infoMusicArtist").textContent =
+        track.artist;
+
+    const downloadButton =
+        document.getElementById("infoMusicDownload");
+
+    downloadButton.disabled = !track.downloadUrl;
+    downloadButton.dataset.url = track.downloadUrl || "";
+
+    infoMusicAudio.src = track.file;
+    infoMusicAudio.load();
+
+    updateMusicPlayer();
+}
+
+function renderInfoMusic() {
+    const app = document.getElementById("infoMusicApp");
+    if (!app) return;
+
+    app.innerHTML = `
+        <div class="music-info-list">
+            ${GAME_MUSIC_INFO.map((track, index) => `
+                <button
+                    type="button"
+                    class="music-info-track"
+                    data-track-index="${index}"
+                >
+                    <span>
+                        <b>${track.title}</b>
+                        <small>${track.artist}</small>
+                    </span>
+
+                    <span>TRACK ${(index + 1).toString().padStart(2, "0")}</span>
+                </button>
+            `).join("")}
+        </div>
+
+        <div class="music-player-box">
+
+            <div class="music-player-title" id="infoMusicTitle"></div>
+
+            <div class="music-player-artist" id="infoMusicArtist"></div>
+
+            <div class="music-seek-row">
+                <span class="music-time" id="infoMusicCurrentTime">0:00</span>
+
+                <input
+                    type="range"
+                    id="infoMusicSeek"
+                    min="0"
+                    max="1"
+                    step="0.1"
+                    value="0"
+                >
+
+                <span class="music-time" id="infoMusicEndTime">0:00</span>
+            </div>
+
+            <div class="music-player-actions">
+                <button
+                    type="button"
+                    class="music-player-btn"
+                    id="infoMusicPlay"
+                >
+                    ▶ Играть
+                </button>
+
+                <button
+                    type="button"
+                    class="music-player-btn"
+                    id="infoMusicDownload"
+                >
+                    Скачать
+                </button>
+            </div>
+
+            <p class="info-note" id="infoMusicStatus"></p>
+        </div>
+    `;
+
+    app.querySelectorAll(".music-info-track").forEach(button => {
+        button.addEventListener("click", () => {
+            selectMusicTrack(Number(button.dataset.trackIndex));
+        });
+    });
+
+    document.getElementById("infoMusicPlay").addEventListener(
+        "click",
+        async () => {
+            if (!infoMusicCurrentTrack) return;
+
+            if (!infoMusicAudio.paused) {
+                infoMusicAudio.pause();
+                updateMusicPlayer();
+                return;
+            }
+
+            if (
+                Number.isFinite(infoMusicAudio.duration) &&
+                infoMusicAudio.currentTime >= infoMusicAudio.duration
+            ) {
+                infoMusicAudio.currentTime = 0;
+            }
+
+            try {
+                await infoMusicAudio.play();
+
+                document.getElementById("infoMusicStatus").textContent = "";
+            } catch (error) {
+                document.getElementById("infoMusicStatus").textContent =
+                    "Не удалось загрузить композицию.";
+
+                console.error(error);
+            }
+
+            updateMusicPlayer();
+        }
+    );
+
+    document.getElementById("infoMusicSeek").addEventListener(
+        "input",
+        event => {
+            if (!infoMusicCurrentTrack) return;
+
+            infoMusicAudio.currentTime = Number(event.target.value);
+
+            updateMusicPlayer();
+        }
+    );
+
+    document.getElementById("infoMusicDownload").addEventListener(
+        "click",
+        async event => {
+            const url = event.currentTarget.dataset.url;
+            const track = infoMusicCurrentTrack;
+
+            if (!url || !track) return;
+
+            const button = event.currentTarget;
+            button.disabled = true;
+            button.textContent = "Загрузка...";
+
+            try {
+                const response = await fetch(url);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const blob = await response.blob();
+                const objectUrl = URL.createObjectURL(blob);
+
+                const link = document.createElement("a");
+
+                const filename =
+                    `${track.artist} - ${track.title}.mp3`
+                        .replace(/[\\/:*?"<>|]/g, "_");
+
+                link.href = objectUrl;
+                link.download = filename;
+
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+
+                setTimeout(() => {
+                    URL.revokeObjectURL(objectUrl);
+                }, 1000);
+
+            } catch (error) {
+                console.error("Ошибка скачивания:", error);
+
+                alert(
+                    "Не удалось скачать музыку. Проверь ссылку на MP3."
+                );
+            } finally {
+                button.disabled = false;
+                button.textContent = "Скачать";
+            }
+        }
+    );
+
+    selectMusicTrack(0);
+}
+
+infoMusicAudio.addEventListener("loadedmetadata", () => {
+    updateMusicPlayer();
+});
+
+infoMusicAudio.addEventListener("timeupdate", () => {
+    updateMusicPlayer();
+});
+
+infoMusicAudio.addEventListener("play", updateMusicPlayer);
+infoMusicAudio.addEventListener("pause", updateMusicPlayer);
+
+infoMusicAudio.addEventListener("error", () => {
+    const status = document.getElementById("infoMusicStatus");
+
+    if (status) {
+        status.textContent = "Ошибка загрузки аудиофайла.";
+    }
+});
+
+
 function showGameInfo(section = "blocks") {
     if (!GAME_INFO_SECTIONS[section]) return;
+
+    // Останавливаем музыку при переходе на другую вкладку.
+    if (section !== "music") {
+        infoMusicAudio.pause();
+    }
 
     infoContent.innerHTML = GAME_INFO_SECTIONS[section];
 
@@ -6022,6 +6443,10 @@ function showGameInfo(section = "blocks") {
             tab.dataset.info === section
         );
     });
+
+    if (section === "music") {
+        renderInfoMusic();
+    }
 }
 
 function openGameInfo() {
@@ -6031,6 +6456,8 @@ function openGameInfo() {
 }
 
 function closeGameInfo() {
+    infoMusicAudio.pause();
+
     infoModal.classList.remove("is-open");
     infoModal.setAttribute("aria-hidden", "true");
 }
