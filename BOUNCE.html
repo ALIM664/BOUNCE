@@ -3086,7 +3086,7 @@ let checkpointNoticeUntil = 0;
 // На сервере true означает закрытый уровень, false — открытый.
 let LEVEL_LOCKED = {
     1: false,
-    2: true,
+    2: false,
     3: true,
     4: true,
     5: true
@@ -6113,54 +6113,60 @@ const GAME_INFO = {
 };
 
 const GAME_MUSIC_INFO = [
-    {
-        artist: "INFEKT",
-        title: "Tendo",
-        file: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/Infekt_-_Tendo_%28SkySound7.com%29.mp3",
-        downloadUrl: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/Infekt_-_Tendo_%28SkySound7.com%29.mp3"
-    },
-    {
-        artist: "ParagonX9",
-        title: "Infiltration",
-        file: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/157014_ParagonX9___Infiltration.mp3",
-        downloadUrl: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/157014_ParagonX9___Infiltration.mp3"
-    },
-    {
-        artist: "Timmy Trumpet & Savage",
-        title: "Freaks",
-        file: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/1221458_Timmy-Trumpet-amp-Savage--.mp3",
-        downloadUrl: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/1221458_Timmy-Trumpet-amp-Savage--.mp3"
-    },
-    {
-        artist: "NIVIRO",
-        title: "The Ghost",
-        file: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/NIVIRO - The Ghost [NCS Release].mp3",
-        downloadUrl: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/NIVIRO - The Ghost [NCS Release].mp3"
-    },
-    {
-        artist: "INFEKT",
-        title: "Into Pieces",
-        file: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/Infekt_-_Into_Pieces_(SkySound7.com).mp3",
-        downloadUrl: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/Infekt_-_Into_Pieces_(SkySound7.com).mp3"
-    },
-    {
-        artist: "_",
-        title: "Electro World",
-        file: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/Electro World.mp3",
-        downloadUrl: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/Electro World.mp3"
-    },
-    {
-        artist: "_",
-        title: "Agent 64",
-        file: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/Agent 64.mp3",
-        downloadUrl: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/Agent 64.mp3"
-    },
-    {
-        artist: "_",
-        title: "Dubsteper",
-        file: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/Dubsteper.mp3",
-        downloadUrl: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/Dubsteper.mp3"
-    }
+{
+    artist: "INFEKT",
+    title: "Tendo",
+    file: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/Infekt_-_Tendo_%28SkySound7.com%29.mp3",
+    downloadUrl: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/Infekt_-_Tendo_%28SkySound7.com%29.mp3"
+},
+{
+    artist: "ParagonX9",
+    title: "Infiltration",
+    file: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/157014_ParagonX9___Infiltration.mp3",
+    downloadUrl: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/157014_ParagonX9___Infiltration.mp3"
+},
+{
+    artist: "Timmy Trumpet & Savage",
+    title: "Freaks",
+    file: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/1221458_Timmy-Trumpet-amp-Savage--.mp3",
+    downloadUrl: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/1221458_Timmy-Trumpet-amp-Savage--.mp3"
+},
+{
+    artist: "NIVIRO",
+    title: "The Ghost",
+    file: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/NIVIRO - The Ghost [NCS Release].mp3",
+    downloadUrl: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/NIVIRO - The Ghost [NCS Release].mp3"
+},
+{
+    artist: "INFEKT",
+    title: "Into Pieces",
+    file: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/Infekt_-_Into_Pieces_(SkySound7.com).mp3",
+    downloadUrl: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/Infekt_-_Into_Pieces_(SkySound7.com).mp3"
+},
+{
+    artist: "MDK",
+    title: "Restart",
+    file: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/MDK_-_Restart__SkySound7.net_.mp3",
+    downloadUrl: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/MDK_-_Restart__SkySound7.net_.mp3"
+},
+{
+    artist: "_",
+    title: "Electro World",
+    file: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/Electro World.mp3",
+    downloadUrl: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/Electro World.mp3"
+},
+{
+    artist: "_",
+    title: "Agent 64",
+    file: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/Agent 64.mp3",
+    downloadUrl: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/Agent 64.mp3"
+},
+{
+    artist: "_",
+    title: "Dubsteper",
+    file: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/Dubsteper.mp3",
+    downloadUrl: "https://raw.githubusercontent.com/ALIM664/BOUNCE/main/bouncesounds/Dubsteper.mp3"
+}
 ];
 
 const GAME_INFO_SECTIONS = {
