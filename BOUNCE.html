@@ -3389,58 +3389,276 @@ function createLevel1() {
 
 
 /* =====================================================
-   УРОВЕНЬ 2
+УРОВЕНЬ 2
 ===================================================== */
 
 function createLevel2() {
 
-    return [
+return [
+    
+    {
+        x: 50,
+        y: 200,
+        w: 30,
+        h: 1500,
+        bounce: 0.75,
+        color: "#ff9900"
+    },
+    
+    {
+        x: 1250,
+        y: 200,
+        w: 30,
+        h: 1200,
+        bounce: 0.75,
+        color: "#ff9900"
+    },
 
-        {
-            x: 50,
-            y: 500,
-            w: 600,
-            h: 30,
-            bounce: 0.5,
-            color: "#ffff00"
-        },
-        
-        {
-            x: 50,
-            y: 200,
-            w: 30,
-            h: 300,
-            bounce: 0.75,
-            color: "#ff9900"
-        },
+    {
+        x: 50,
+        y: 200,
+        w: 1200,
+        h: 30,
+        bounce: 0.5,
+        color: "#ffff00"
+    },
 
-        {
-            x: 50,
-            y: 200,
-            w: 1200,
-            h: 30,
-            bounce: 0.5,
-            color: "#ffff00"
-        },
-        
-        {
-            x: 1250,
-            y: 200,
-            w: 30,
-            h: 600,
-            bounce: 0.75,
-            color: "#ff9900"
-        },
+    {
+        x: 50,
+        y: 500,
+        w: 600,
+        h: 30,
+        bounce: 0.5,
+        color: "#ffff00"
+    },
 
-        {
-            x: 650,
-            y: 800,
-            w: 600,
-            h: 30,
-            bounce: 0.5,
-            color: "#ffff00"
-        },
-    ];
+    {
+        x: 650,
+        y: 800,
+        w: 600,
+        h: 30,
+        bounce: 0.5,
+        color: "#ffff00"
+    },
+
+    {
+        x: 50,
+        y: 1100,
+        w: 600,
+        h: 30,
+        bounce: 0.5,
+        color: "#ffff00"
+    },
+
+    {
+        x: 650,
+        y: 1400,
+        w: 600,
+        h: 30,
+        bounce: 0.5,
+        color: "#ffff00"
+    },
+
+    {
+        x: 50,
+        y: 1700,
+        w: 1800,
+        h: 30,
+        bounce: 0.5,
+        color: "#ffff00"
+    },
+
+    {
+        x: 1250,
+        y: 1100,
+        w: 600,
+        h: 30,
+        bounce: 0.5,
+        color: "#ffff00"
+    },
+
+    {
+        x: 1850,
+        y: 500,
+        w: 1200,
+        h: 30,
+        bounce: 0.25,
+        color: "#99ff00"
+    },
+
+    {
+        x: 3650,
+        y: 200,
+        w: 30,
+        h: 600,
+        bounce: 0.25,
+        color: "#99ff00"
+    },
+
+    {
+        x: 1250,
+        y: 200,
+        w: 4500,
+        h: 30,
+        bounce: 0.25,
+        color: "#99ff00"
+    },
+
+    {
+        x: 3050,
+        y: 800,
+        w: 1200,
+        h: 30,
+        bounce: 0.25,
+        color: "#99ff00"
+    },
+
+    {
+        x: 4850,
+        y: 1100,
+        w: 900,
+        h: 30,
+        bounce: 0,
+        color: "#00ff00"
+    },
+
+    /* ШИПЫ */
+
+    {
+        x: 1850,
+        y: 1700,
+        w: 600,
+        h: 30,
+        bounce: 0,
+        color: "#00ffff",
+        spikes: true
+    },
+
+    {
+        x: 2450,
+        y: 500,
+        w: 30,
+        h: 1200,
+        bounce: 0,
+        color: "#00ffff",
+        spikes: true
+    },
+
+    {
+        x: 4850,
+        y: 500,
+        w: 30,
+        h: 900,
+        bounce: 0,
+        color: "#00ffff",
+        spikes: true
+    },
+
+    {
+        x: 2450,
+        y: 1400,
+        w: 2450,
+        h: 30,
+        bounce: 0,
+        color: "#00ffff",
+        spikes: true
+    },
+
+    {
+        x: 4250,
+        y: 500,
+        w: 600,
+        h: 30,
+        bounce: 0,
+        color: "#00ffff",
+        spikes: true
+    },
+
+    // ОБЛАСТЬ ДОПОЛНИТЕЛЬНОГО ПРЫЖКА
+    {
+        x: 1850,
+        y: 500,
+        w: 600,
+        h: 1200,
+        bounce: 0,
+        color: "#ffffff55",
+        jump: true
+    },
+
+    {
+        x: 2450,
+        y: 1000,
+        w: 2400,
+        h: 400,
+        bounce: 0,
+        color: "#ffffff55",
+        jump: true
+    },
+
+    // GRID
+
+    {
+        x: 4900,
+        y: 500,
+        w: 30,
+        h: 600,
+        bounce: 50,
+        color: "#ff0000",
+        grid: true
+    },
+
+    {
+        x: 5450,
+        y: 200,
+        w: 30,
+        h: 750,
+        bounce: 10,
+        color: "#00ff00",
+        grid: true
+    },
+
+    {
+        x: 5750,
+        y: 1100,
+        w: 300,
+        h: 30,
+        bounce: 50,
+        color: "#ff0000",
+        grid: true
+    },
+
+    {
+        x: 6050,
+        y: 200,
+        w: 30,
+        h: 900,
+        bounce: 50,
+        color: "#ff0000",
+        grid: true
+    },
+
+    {
+        x: 5750,
+        y: -100,
+        w: 30,
+        h: 900,
+        bounce: 50,
+        color: "#ff0000",
+        grid: true
+    },
+
+    /* ФИНИШ */
+
+    {
+        x: 11500,
+        y: 200,
+        w: 300,
+        h: 30,
+        bounce: 1.0,
+        color: "#ffffff",
+        finish: true
+    }
+];
 }
 
 
@@ -5973,119 +6191,119 @@ function resetGame(fromCheckpoint = false) {
 
 function gameLoop(currentTime) {
 
-    requestAnimationFrame(gameLoop);
+requestAnimationFrame(gameLoop);
 
-    if (
-        !gameScreen.classList.contains("active")
-    ) {
-        lastTime = currentTime;
-        return;
-    }
-
-    // Сколько времени прошло с прошлого кадра
-    let frameTime =
-        (currentTime - lastTime) / 1000;
-
+if (
+    !gameScreen.classList.contains("active")
+) {
     lastTime = currentTime;
+    return;
+}
 
-    // Если телефон завис/свернул вкладку,
-    // не пытаемся просчитать огромный промежуток
-    frameTime = Math.min(frameTime, 0.1);
+// Сколько времени прошло с прошлого кадра
+let frameTime =
+    (currentTime - lastTime) / 1000;
 
-    accumulator += frameTime;
+lastTime = currentTime;
 
-    /*
-       ФИЗИКА ВСЕГДА ИДЁТ С ШАГОМ 1/60 СЕКУНДЫ.
+// Если телефон завис/свернул вкладку,
+// не пытаемся просчитать огромный промежуток
+frameTime = Math.min(frameTime, 0.1);
 
-       120 FPS:
-       render → physics → render → physics...
+accumulator += frameTime;
 
-       60 FPS:
-       render → physics...
+/*
+   ФИЗИКА ВСЕГДА ИДЁТ С ШАГОМ 1/60 СЕКУНДЫ.
 
-       30 FPS:
-       render → physics → physics → render...
+   120 FPS:
+   render → physics → render → physics...
 
-       Поэтому скорость игры не зависит
-       от количества кадров.
-    */
-    while (accumulator >= FIXED_DT) {
+   60 FPS:
+   render → physics...
 
-        update();
+   30 FPS:
+   render → physics → physics → render...
 
-        accumulator -= FIXED_DT;
-    }
+   Поэтому скорость игры не зависит
+   от количества кадров.
+*/
+while (accumulator >= FIXED_DT) {
 
-    // Рендер может работать с любым FPS
-    drawBackground();
+    update();
 
-    ctx.save();
+    accumulator -= FIXED_DT;
+}
 
-    ctx.translate(
-        canvas.width / 2,
-        canvas.height / 2
-    );
+// Рендер может работать с любым FPS
+drawBackground();
 
-    ctx.scale(
-        camera.zoom,
-        camera.zoom
-    );
+ctx.save();
 
-    ctx.translate(
-        -canvas.width / 2,
-        -canvas.height / 2
-    );
+ctx.translate(
+    canvas.width / 2,
+    canvas.height / 2
+);
 
-    drawTrail();
+ctx.scale(
+    camera.zoom,
+    camera.zoom
+);
 
-    drawBlocks();
+ctx.translate(
+    -canvas.width / 2,
+    -canvas.height / 2
+);
 
-    drawCheckpoints();
+drawTrail();
 
-    drawOtherPlayers();
+drawBlocks();
 
-    drawAim();
+drawCheckpoints();
 
-    drawCube();
+drawOtherPlayers();
 
-    drawNickname();
+drawAim();
 
-    ctx.restore();
+drawCube();
 
-    drawWorldPosition();
+drawNickname();
 
-    drawCheckpointNotice();
+ctx.restore();
+
+drawWorldPosition();
+
+drawCheckpointNotice();
 
 }
 
 
 function drawCheckpointNotice() {
 
-    if (performance.now() > checkpointNoticeUntil) return;
+if (performance.now() > checkpointNoticeUntil) return;
 
-    const remaining = checkpointNoticeUntil - performance.now();
-    const alpha = Math.min(1, remaining / 350);
-    const width = Math.min(320, canvas.width - 36);
-    const height = 46;
-    const x = (canvas.width - width) / 2;
-    const y = 48;
+const remaining = checkpointNoticeUntil - performance.now();
+const alpha = Math.min(1, remaining / 350);
+const width = Math.min(320, canvas.width - 36);
+const height = 46;
+const x = (canvas.width - width) / 2;
+const y = 48;
 
-    ctx.save();
-    ctx.globalAlpha = alpha;
-    ctx.fillStyle = "rgba(8, 20, 28, 0.9)";
-    ctx.strokeStyle = "#39ff9b";
-    ctx.lineWidth = 2;
-    ctx.shadowColor = "#39ff9b";
-    ctx.shadowBlur = 14;
-    ctx.fillRect(x, y, width, height);
-    ctx.strokeRect(x, y, width, height);
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = "#7dffbd";
-    ctx.font = "bold 15px Arial";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText("CHECKPOINT СОХРАНЁН!", canvas.width / 2, y + height / 2);
-    ctx.restore();
+ctx.save();
+ctx.globalAlpha = alpha;
+ctx.fillStyle = "rgba(8, 20, 28, 0.9)";
+ctx.strokeStyle = "#39ff9b";
+ctx.lineWidth = 2;
+ctx.shadowColor = "#39ff9b";
+ctx.shadowBlur = 14;
+ctx.fillRect(x, y, width, height);
+ctx.strokeRect(x, y, width, height);
+ctx.shadowBlur = 0;
+ctx.fillStyle = "#7dffbd";
+ctx.font = "bold 15px Arial";
+ctx.textAlign = "center";
+ctx.textBaseline = "middle";
+ctx.fillText("CHECKPOINT СОХРАНЁН!", canvas.width / 2, y + height / 2);
+ctx.restore();
 }
 
 requestAnimationFrame(gameLoop);
@@ -6097,7 +6315,7 @@ loadCube();
 syncPlayerAppearance();
 
 /* =====================================================
-   ИНФОРМАЦИЯ ОБ ИГРЕ
+ИНФОРМАЦИЯ ОБ ИГРЕ
 ===================================================== */
 
 const openInfoButton = document.getElementById("openInfoButton");
@@ -6108,8 +6326,8 @@ const infoTabs = document.querySelectorAll(".info-tab");
 
 // Эти значения можно изменить под свою сборку игры.
 const GAME_INFO = {
-    author: "♦♦♦BENprogrammer♦♦♦",
-    version: "0.1.0"
+author: "♦♦♦BENprogrammer♦♦♦",
+version: "0.1.0"
 };
 
 const GAME_MUSIC_INFO = [
@@ -6170,34 +6388,34 @@ const GAME_MUSIC_INFO = [
 ];
 
 const GAME_INFO_SECTIONS = {
-    blocks: `
-        <h3>Блоки</h3>
-        <p>типы объектов:</p>
-        <ul>
-            <li>у платформ разный уровень отскока:</li>
-            <li style="color: #00ff00;">0</li>
-            <li style="color: #99ff00;">0.25</li>
-            <li style="color: #ffff00;">0.5</li>
-            <li style="color: #ff9900;">0.75</li>
-            <li style="color: #ff0000;">1</li>
-            <li>Шипы — опасные объекты.</li>
-        </ul>
-    `,
-    author: `
-        <h3>Автор игры</h3>
-        <p><b>${GAME_INFO.author}</b></p>
-        <p class="info-note">Разработка и обновление проекта BOUNCE.</p>
-    `,
-    version: `
-        <h3>Версия игры</h3>
-        <p><b>BOUNCE ${GAME_INFO.version}</b></p>
-        <p class="info-note">Обновления выходят часто.</p>
-    `,
-    music: `
-        <h3>Музыка BOUNCE</h3>
-        <p>Музыкальные композиции, используемые в уровнях игры.</p>
-        <div id="infoMusicApp"></div>
-    `
+blocks: `
+    <h3>Блоки</h3>
+    <p>типы объектов:</p>
+    <ul>
+        <li>у платформ разный уровень отскока:</li>
+        <li style="color: #00ff00;">0</li>
+        <li style="color: #99ff00;">0.25</li>
+        <li style="color: #ffff00;">0.5</li>
+        <li style="color: #ff9900;">0.75</li>
+        <li style="color: #ff0000;">1</li>
+        <li>Шипы — опасные объекты.</li>
+    </ul>
+`,
+author: `
+    <h3>Автор игры</h3>
+    <p><b>${GAME_INFO.author}</b></p>
+    <p class="info-note">Разработка и обновление проекта BOUNCE.</p>
+`,
+version: `
+    <h3>Версия игры</h3>
+    <p><b>BOUNCE ${GAME_INFO.version}</b></p>
+    <p class="info-note">Обновления выходят часто.</p>
+`,
+music: `
+    <h3>Музыка BOUNCE</h3>
+    <p>Музыкальные композиции, используемые в уровнях игры.</p>
+    <div id="infoMusicApp"></div>
+`
 };
 
 
@@ -6206,323 +6424,435 @@ infoMusicAudio.preload = "metadata";
 
 let infoMusicCurrentTrack = null;
 
+let infoMusicRepeatTrack = false;
+let infoMusicRepeatPlaylist = false;
+
 function formatMusicTime(seconds) {
-    if (!Number.isFinite(seconds)) return "0:00";
+if (!Number.isFinite(seconds)) return "0:00";
 
-    const value = Math.floor(seconds);
-    const minutes = Math.floor(value / 60);
-    const remaining = value % 60;
+const value = Math.floor(seconds);
+const minutes = Math.floor(value / 60);
+const remaining = value % 60;
 
-    return `${minutes}:${String(remaining).padStart(2, "0")}`;
+return `${minutes}:${String(remaining).padStart(2, "0")}`;
 }
 
 function updateMusicPlayer() {
-    const seek = document.getElementById("infoMusicSeek");
-    const playButton = document.getElementById("infoMusicPlay");
-    const currentTime = document.getElementById("infoMusicCurrentTime");
-    const endTime = document.getElementById("infoMusicEndTime");
+const seek = document.getElementById("infoMusicSeek");
+const playButton = document.getElementById("infoMusicPlay");
+const currentTime = document.getElementById("infoMusicCurrentTime");
+const endTime = document.getElementById("infoMusicEndTime");
 
-    if (!seek) return;
+if (!seek) return;
 
-    const duration = Number.isFinite(infoMusicAudio.duration)
-        ? infoMusicAudio.duration
-        : 0;
+const duration = Number.isFinite(infoMusicAudio.duration)
+    ? infoMusicAudio.duration
+    : 0;
 
-    seek.max = String(Math.max(1, duration));
-    seek.value = String(infoMusicAudio.currentTime || 0);
+seek.max = String(Math.max(1, duration));
+seek.value = String(infoMusicAudio.currentTime || 0);
 
-    currentTime.textContent = formatMusicTime(
-        infoMusicAudio.currentTime || 0
+currentTime.textContent = formatMusicTime(
+    infoMusicAudio.currentTime || 0
+);
+
+endTime.textContent = formatMusicTime(duration);
+
+playButton.textContent = infoMusicAudio.paused
+    ? "PLAY"
+    : "STOP";
+
+    const repeatTrackButton =
+    document.getElementById("infoMusicRepeatTrack");
+
+const repeatPlaylistButton =
+    document.getElementById("infoMusicRepeatPlaylist");
+
+if (repeatTrackButton) {
+    repeatTrackButton.textContent = infoMusicRepeatTrack
+        ? "Повтор трека: ON"
+        : "Повтор трека: OFF";
+
+    repeatTrackButton.classList.toggle(
+        "active",
+        infoMusicRepeatTrack
     );
+}
 
-    endTime.textContent = formatMusicTime(duration);
+if (repeatPlaylistButton) {
+    repeatPlaylistButton.textContent = infoMusicRepeatPlaylist
+        ? "Повтор списка: ON"
+        : "Повтор списка: OFF";
 
-    playButton.textContent = infoMusicAudio.paused
-        ? "▶ Играть"
-        : "Ⅱ Пауза";
+    repeatPlaylistButton.classList.toggle(
+        "active",
+        infoMusicRepeatPlaylist
+    );
+}
 }
 
 function selectMusicTrack(index) {
-    const track = GAME_MUSIC_INFO[index];
-    if (!track) return;
+const track = GAME_MUSIC_INFO[index];
+if (!track) return;
 
-    infoMusicAudio.pause();
-    infoMusicCurrentTrack = track;
+infoMusicAudio.pause();
+infoMusicCurrentTrack = track;
 
-    document.querySelectorAll(".music-info-track").forEach(button => {
-        button.classList.toggle(
-            "active",
-            Number(button.dataset.trackIndex) === index
-        );
-    });
+document.querySelectorAll(".music-info-track").forEach(button => {
+    button.classList.toggle(
+        "active",
+        Number(button.dataset.trackIndex) === index
+    );
+});
 
-    document.getElementById("infoMusicTitle").textContent =
-        track.title;
+document.getElementById("infoMusicTitle").textContent =
+    track.title;
 
-    document.getElementById("infoMusicArtist").textContent =
-        track.artist;
+document.getElementById("infoMusicArtist").textContent =
+    track.artist;
 
-    const downloadButton =
-        document.getElementById("infoMusicDownload");
+const downloadButton =
+    document.getElementById("infoMusicDownload");
 
-    downloadButton.disabled = !track.downloadUrl;
-    downloadButton.dataset.url = track.downloadUrl || "";
+downloadButton.disabled = !track.downloadUrl;
+downloadButton.dataset.url = track.downloadUrl || "";
 
-    infoMusicAudio.src = track.file;
-    infoMusicAudio.load();
+infoMusicAudio.src = track.file;
+infoMusicAudio.load();
 
-    updateMusicPlayer();
+updateMusicPlayer();
 }
 
 function renderInfoMusic() {
-    const app = document.getElementById("infoMusicApp");
-    if (!app) return;
+const app = document.getElementById("infoMusicApp");
+if (!app) return;
 
-    app.innerHTML = `
-        <div class="music-info-list">
-            ${GAME_MUSIC_INFO.map((track, index) => `
-                <button
-                    type="button"
-                    class="music-info-track"
-                    data-track-index="${index}"
-                >
-                    <span>
-                        <b>${track.title}</b>
-                        <small>${track.artist}</small>
-                    </span>
+app.innerHTML = `
+    <div class="music-info-list">
+        ${GAME_MUSIC_INFO.map((track, index) => `
+            <button
+                type="button"
+                class="music-info-track"
+                data-track-index="${index}"
+            >
+                <span>
+                    <b>${track.title}</b>
+                    <small>${track.artist}</small>
+                </span>
 
-                    <span>TRACK ${(index + 1).toString().padStart(2, "0")}</span>
-                </button>
-            `).join("")}
+                <span>TRACK ${(index + 1).toString().padStart(2, "0")}</span>
+            </button>
+        `).join("")}
+    </div>
+
+    <div class="music-player-box">
+
+        <div class="music-player-title" id="infoMusicTitle"></div>
+
+        <div class="music-player-artist" id="infoMusicArtist"></div>
+
+        <div class="music-seek-row">
+            <span class="music-time" id="infoMusicCurrentTime">0:00</span>
+
+            <input
+                type="range"
+                id="infoMusicSeek"
+                min="0"
+                max="1"
+                step="0.1"
+                value="0"
+            >
+
+            <span class="music-time" id="infoMusicEndTime">0:00</span>
         </div>
 
-        <div class="music-player-box">
+        <div class="music-player-actions">
+            <button
+                type="button"
+                class="music-player-btn"
+                id="infoMusicRepeatTrack"
+            >
+                Повтор трека OFF
+            </button>
 
-            <div class="music-player-title" id="infoMusicTitle"></div>
+            <button
+                type="button"
+                class="music-player-btn"
+                id="infoMusicRepeatPlaylist"
+            >
+                Повтор списка: OFF
+            </button>
+            <button
+                type="button"
+                class="music-player-btn"
+                id="infoMusicPlay"
+            >
+                PLAY
+            </button>
 
-            <div class="music-player-artist" id="infoMusicArtist"></div>
-
-            <div class="music-seek-row">
-                <span class="music-time" id="infoMusicCurrentTime">0:00</span>
-
-                <input
-                    type="range"
-                    id="infoMusicSeek"
-                    min="0"
-                    max="1"
-                    step="0.1"
-                    value="0"
-                >
-
-                <span class="music-time" id="infoMusicEndTime">0:00</span>
-            </div>
-
-            <div class="music-player-actions">
-                <button
-                    type="button"
-                    class="music-player-btn"
-                    id="infoMusicPlay"
-                >
-                    ▶ Играть
-                </button>
-
-                <button
-                    type="button"
-                    class="music-player-btn"
-                    id="infoMusicDownload"
-                >
-                    Скачать
-                </button>
-            </div>
-
-            <p class="info-note" id="infoMusicStatus"></p>
+            <button
+                type="button"
+                class="music-player-btn"
+                id="infoMusicDownload"
+            >
+                DOWNLOAD
+            </button>
         </div>
-    `;
 
-    app.querySelectorAll(".music-info-track").forEach(button => {
-        button.addEventListener("click", () => {
-            selectMusicTrack(Number(button.dataset.trackIndex));
-        });
+        <p class="info-note" id="infoMusicStatus"></p>
+    </div>
+`;
+
+app.querySelectorAll(".music-info-track").forEach(button => {
+    button.addEventListener("click", () => {
+        selectMusicTrack(Number(button.dataset.trackIndex));
+    });
+});
+
+document.getElementById("infoMusicPlay").addEventListener(
+    "click",
+    async () => {
+        if (!infoMusicCurrentTrack) return;
+
+        if (!infoMusicAudio.paused) {
+            infoMusicAudio.pause();
+            updateMusicPlayer();
+            return;
+        }
+
+        if (
+            Number.isFinite(infoMusicAudio.duration) &&
+            infoMusicAudio.currentTime >= infoMusicAudio.duration
+        ) {
+            infoMusicAudio.currentTime = 0;
+        }
+
+        try {
+            await infoMusicAudio.play();
+
+            document.getElementById("infoMusicStatus").textContent = "";
+        } catch (error) {
+            document.getElementById("infoMusicStatus").textContent =
+                "Не удалось загрузить композицию.";
+
+            console.error(error);
+        }
+
+        updateMusicPlayer();
+    }
+);
+
+// ПОВТОР ТЕКУЩЕГО ТРЕКА
+document.getElementById("infoMusicRepeatTrack")
+    .addEventListener("click", () => {
+
+        infoMusicRepeatTrack = !infoMusicRepeatTrack;
+
+        if (infoMusicRepeatTrack) {
+            infoMusicRepeatPlaylist = false;
+        }
+
+        infoMusicAudio.loop = infoMusicRepeatTrack;
+
+        updateMusicPlayer();
     });
 
-    document.getElementById("infoMusicPlay").addEventListener(
-        "click",
-        async () => {
-            if (!infoMusicCurrentTrack) return;
 
-            if (!infoMusicAudio.paused) {
-                infoMusicAudio.pause();
-                updateMusicPlayer();
-                return;
-            }
+// ПОВТОР ВСЕГО СПИСКА
+document.getElementById("infoMusicRepeatPlaylist")
+    .addEventListener("click", () => {
 
-            if (
-                Number.isFinite(infoMusicAudio.duration) &&
-                infoMusicAudio.currentTime >= infoMusicAudio.duration
-            ) {
-                infoMusicAudio.currentTime = 0;
-            }
+        infoMusicRepeatPlaylist = !infoMusicRepeatPlaylist;
 
-            try {
-                await infoMusicAudio.play();
-
-                document.getElementById("infoMusicStatus").textContent = "";
-            } catch (error) {
-                document.getElementById("infoMusicStatus").textContent =
-                    "Не удалось загрузить композицию.";
-
-                console.error(error);
-            }
-
-            updateMusicPlayer();
+        if (infoMusicRepeatPlaylist) {
+            infoMusicRepeatTrack = false;
         }
-    );
 
-    document.getElementById("infoMusicSeek").addEventListener(
-        "input",
-        event => {
-            if (!infoMusicCurrentTrack) return;
+        infoMusicAudio.loop = false;
 
-            infoMusicAudio.currentTime = Number(event.target.value);
+        updateMusicPlayer();
+    });
 
-            updateMusicPlayer();
-        }
-    );
+document.getElementById("infoMusicSeek").addEventListener(
+    "input",
+    event => {
+        if (!infoMusicCurrentTrack) return;
 
-    document.getElementById("infoMusicDownload").addEventListener(
-        "click",
-        async event => {
-            const url = event.currentTarget.dataset.url;
-            const track = infoMusicCurrentTrack;
+        infoMusicAudio.currentTime = Number(event.target.value);
 
-            if (!url || !track) return;
+        updateMusicPlayer();
+    }
+);
 
-            const button = event.currentTarget;
-            button.disabled = true;
-            button.textContent = "Загрузка...";
+document.getElementById("infoMusicDownload").addEventListener(
+    "click",
+    async event => {
+        const url = event.currentTarget.dataset.url;
+        const track = infoMusicCurrentTrack;
 
-            try {
-                const response = await fetch(url);
+        if (!url || !track) return;
 
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
+        const button = event.currentTarget;
+        button.disabled = true;
+        button.textContent = "Загрузка...";
 
-                const blob = await response.blob();
-                const objectUrl = URL.createObjectURL(blob);
+        try {
+            const response = await fetch(url);
 
-                const link = document.createElement("a");
-
-                const filename =
-                    `${track.artist} - ${track.title}.mp3`
-                        .replace(/[\\/:*?"<>|]/g, "_");
-
-                link.href = objectUrl;
-                link.download = filename;
-
-                document.body.appendChild(link);
-                link.click();
-                link.remove();
-
-                setTimeout(() => {
-                    URL.revokeObjectURL(objectUrl);
-                }, 1000);
-
-            } catch (error) {
-                console.error("Ошибка скачивания:", error);
-
-                alert(
-                    "Не удалось скачать музыку. Проверь ссылку на MP3."
-                );
-            } finally {
-                button.disabled = false;
-                button.textContent = "Скачать";
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
             }
-        }
-    );
 
-    selectMusicTrack(0);
+            const blob = await response.blob();
+            const objectUrl = URL.createObjectURL(blob);
+
+            const link = document.createElement("a");
+
+            const filename =
+                `${track.artist} - ${track.title}.mp3`
+                    .replace(/[\\/:*?"<>|]/g, "_");
+
+            link.href = objectUrl;
+            link.download = filename;
+
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+
+            setTimeout(() => {
+                URL.revokeObjectURL(objectUrl);
+            }, 1000);
+
+        } catch (error) {
+            console.error("Ошибка скачивания:", error);
+
+            alert(
+                "Не удалось скачать музыку. Проверь ссылку на MP3."
+            );
+        } finally {
+            button.disabled = false;
+            button.textContent = "DOWNLOAD";
+        }
+    }
+);
+
+selectMusicTrack(0);
 }
 
 infoMusicAudio.addEventListener("loadedmetadata", () => {
-    updateMusicPlayer();
+updateMusicPlayer();
 });
 
 infoMusicAudio.addEventListener("timeupdate", () => {
-    updateMusicPlayer();
+updateMusicPlayer();
 });
 
 infoMusicAudio.addEventListener("play", updateMusicPlayer);
 infoMusicAudio.addEventListener("pause", updateMusicPlayer);
 
-infoMusicAudio.addEventListener("error", () => {
-    const status = document.getElementById("infoMusicStatus");
+// АВТОМАТИЧЕСКИЙ ПОВТОР СПИСКА
+infoMusicAudio.addEventListener("ended", () => {
 
-    if (status) {
-        status.textContent = "Ошибка загрузки аудиофайла.";
+if (!infoMusicRepeatPlaylist) {
+    updateMusicPlayer();
+    return;
+}
+
+const currentIndex =
+    GAME_MUSIC_INFO.indexOf(infoMusicCurrentTrack);
+
+if (currentIndex === -1 || GAME_MUSIC_INFO.length === 0) {
+    return;
+}
+
+const nextIndex =
+    (currentIndex + 1) % GAME_MUSIC_INFO.length;
+
+const startNextTrack = async () => {
+    try {
+        await infoMusicAudio.play();
+    } catch (error) {
+        console.error(error);
     }
+};
+
+infoMusicAudio.addEventListener(
+    "canplay",
+    startNextTrack,
+    { once: true }
+);
+
+selectMusicTrack(nextIndex);
+});
+
+infoMusicAudio.addEventListener("error", () => {
+const status = document.getElementById("infoMusicStatus");
+
+if (status) {
+    status.textContent = "Ошибка загрузки аудиофайла.";
+}
 });
 
 
 function showGameInfo(section = "blocks") {
-    if (!GAME_INFO_SECTIONS[section]) return;
+if (!GAME_INFO_SECTIONS[section]) return;
 
-    // Останавливаем музыку при переходе на другую вкладку.
-    if (section !== "music") {
-        infoMusicAudio.pause();
-    }
+// Останавливаем музыку при переходе на другую вкладку.
+if (section !== "music") {
+    infoMusicAudio.pause();
+}
 
-    infoContent.innerHTML = GAME_INFO_SECTIONS[section];
+infoContent.innerHTML = GAME_INFO_SECTIONS[section];
 
-    infoTabs.forEach(tab => {
-        tab.classList.toggle(
-            "active",
-            tab.dataset.info === section
-        );
-    });
+infoTabs.forEach(tab => {
+    tab.classList.toggle(
+        "active",
+        tab.dataset.info === section
+    );
+});
 
-    if (section === "music") {
-        renderInfoMusic();
-    }
+if (section === "music") {
+    renderInfoMusic();
+}
 }
 
 function openGameInfo() {
-    showGameInfo("blocks");
-    infoModal.classList.add("is-open");
-    infoModal.setAttribute("aria-hidden", "false");
+showGameInfo("blocks");
+infoModal.classList.add("is-open");
+infoModal.setAttribute("aria-hidden", "false");
 }
 
 function closeGameInfo() {
-    infoMusicAudio.pause();
+infoMusicAudio.pause();
 
-    infoModal.classList.remove("is-open");
-    infoModal.setAttribute("aria-hidden", "true");
+infoModal.classList.remove("is-open");
+infoModal.setAttribute("aria-hidden", "true");
 }
 
 openInfoButton.addEventListener("click", openGameInfo);
 closeInfoButton.addEventListener("click", closeGameInfo);
 
 infoTabs.forEach(tab => {
-    tab.addEventListener("click", () => {
-        showGameInfo(tab.dataset.info);
-    });
+tab.addEventListener("click", () => {
+    showGameInfo(tab.dataset.info);
+});
 });
 
 // Закрываем окно нажатием на затемнённую область.
 infoModal.addEventListener("click", event => {
-    if (event.target === infoModal) {
-        closeGameInfo();
-    }
+if (event.target === infoModal) {
+    closeGameInfo();
+}
 });
 
 // И клавишей Escape.
 document.addEventListener("keydown", event => {
-    if (
-        event.key === "Escape" &&
-        infoModal.classList.contains("is-open")
-    ) {
-        closeGameInfo();
-    }
+if (
+    event.key === "Escape" &&
+    infoModal.classList.contains("is-open")
+) {
+    closeGameInfo();
+}
 });
 
 </script>
